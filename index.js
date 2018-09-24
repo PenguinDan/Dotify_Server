@@ -1,17 +1,23 @@
-const http = require('http');
-const port = 3000;
+'use strict'
 
-const requestHandler = (request, response) => {
-  console.log(request.url)
-  response.end('Hello Node.js Server!')
-}
+// Modules
+const MONGOOSE = require('mongoose');
+const HTTP = require('http');
+const EXPRESS = require('express');
+const ROUTES = require('./api/router');
+const BODY_PARSER = require('body-parser');
+const FS = require('fs');
 
-const server = http.createServer(requestHandler)
+// Constant variables
+const SERVER_PORT = 3000;
 
-server.listen(port, (err) => {
-  if (err) {
-    return console.log('something bad happened', err)
-  }
+const app = EXPRESS();
+app.use(BODY_PARSER.urlencoded({ extended: true}));
+app.use(BODY_PARSER.json());
 
-  console.log(`server is listening on ${port}`)
-})
+const ROUTER = ROUTES(EXPRESS.Router());
+app.use('/', ROUTER);
+
+app.listen(SERVER_PORT);
+console.log(`Running on port: ${SERVER_PORT}`);
+
