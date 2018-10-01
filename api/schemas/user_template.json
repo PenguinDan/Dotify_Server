@@ -1,0 +1,11 @@
+{
+	"email": "",
+	"password": "",
+	"security_questions": {
+		"question_one": "",
+		"answer_one": "",
+		"question_two": "",
+		"answer_two": ""
+	},
+	"playlists": []
+}

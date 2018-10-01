@@ -7,7 +7,7 @@ const routing = function routing(express_router){
 
   // Default server entry message
   router.route('/').get(function(req, res) {
-    res.json({ message: 'Welcome to the REST API of Dotify' });
+    res.json({ message: 'Welcome to the REST API of Dotify!!!' });
   });
   // Create the user
   router.route('/users').post(function (req, res) {

@@ -34,12 +34,12 @@ let cipher =  ['ECDHE-ECDSA-AES256-GCM-SHA384',
 '!DSS'].join(':');
 
 // Redirect HTTP Connections to HTTPS
-HTTPAPP.use('*', function(req, res, next) {
+HTTPAPP.get('*', function(req, res, next) {
   if(req.headers.host === "dotify.online"){
-    res.redirect('https://www.' + req.headers.host + req.url);
+    res.redirect('https://www.' + req.headers.host + req.originalUrl);
   }
   else{
-    res.redirect('https://'+ req.headers.host + req.url);
+    res.redirect('https://'+ req.headers.host + req.originalUrl);
   }
 });
 
