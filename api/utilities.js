@@ -1,25 +1,32 @@
 // Modules
 const FS = require('fs');
-const WINSTON = require('winston');
+const { createLogger, format, transports } = require('winston');
+const { combine, timestamp, label, prettyPrint } = format;
 
-// Configuration
-const CONFIG = JSON.parse(FS.readFileSync('./api/config/config.json'));
-const SERVER_DATA = JSON.parse(FS.readFileSync('./api/config/server_data.json'));
-const APPKEY = CONFIG.AppKey;
+// Initialize Modules
+// Initialize Winston Module
+const logger = createLogger({
+  level: 'info',
+  format: combine(
+    label({ label: 'Runtime Debug'}),
+    timestamp(),
+    prettyPrint()
+  ),
+  transports: [new transports.Console()]
+});
 
-// Constants
+// Constant
 const EMPTY_APPKEY_ERROR = 0;
 const INVALID_APPKEY_ERROR = 1;
+const INVALID_BODY_ERROR = 2;
+const CONFIG_FILEPATH = './api/config/config.json';
+const SERVER_DATA_FILEPATH = './api/config/server_data.json';
+const USER_DATA_DIRECTORY = './api/models/users/';
 
-// Lets the application know that no Application Keys were provided
-// or if the application key was invalid
-function invalidAppKey(appKeyError, res){
-  if(appKeyError == EMPTY_APPKEY_ERROR){
-    return res.status(401).json({message: "AppKey was not provided."});
-  }else{
-    return res.status(406).json({message: "Invalid AppKey has been provided."});
-  }
-}
+// Configuration
+const CONFIG = JSON.parse(FS.readFileSync(CONFIG_FILEPATH));
+const SERVER_DATA = JSON.parse(FS.readFileSync(SERVER_DATA_FILEPATH));
+const APPKEY = CONFIG.AppKey;
 
 // Checks whether the application contains the correct credentials
 function authenticateApp(req, res){
@@ -29,14 +36,14 @@ function authenticateApp(req, res){
     // Checks whether we have an application key
     if(appKey){
       if(appKey != APPKEY){
-	res = invalidAppKey(INVALID_APPKEY_ERROR, res);
+	res = res.status(406).json({message: "Invalid AppKey has been provided."});
         // The appkey given by the appication is invalid
 	reject(res);
       }
       // The appkey given by the application is correct
       resolve(res);
     } else {
-	res = invalidAppKey(EMPTY_APPKEY_ERROR, res);
+	res = res.status(401).json({message: "Appkey Was not provided."});
 	// The appkey was not given by the application
 	reject(res);
     }
@@ -48,13 +55,37 @@ function getUserCount(){
   return SERVER_DATA.UserCount;
 }
 
+// Increments the user count value by one in the JSON configuration file
+function incrementUserCount(){
+  // Retrieves the current user count and increments by one
+  newUserCount = getUserCount() + 1;
+  // Save the new value for the user count
+  SERVER_DATA.UserCount = newUserCount;
+  FS.writeFileSync(SERVER_DATA_FILEPATH, JSON.stringify(SERVER_DATA));
+}
+
+// Saves the user data
+function saveUserDataFile(username, jsonFile){
+  let userDirectory = `${USER_DATA_DIRECTORY}/${username}`;
+  let userDataFilePath = `${userDirectory}/user.json`;
+
+  if (!FS.existsSync(userDirectory)){
+    FS.mkdirSync(userDirectory);
+  }
+  // Saves the user json file into the directory
+  // corresponding with the user's username
+  FS.writeFileSync(userDataFilePath, JSON.stringify(jsonFile));
+}
+
 // Asynchronously logs
 function logAsync(message){
-  WINSTON.info(message, {timestamp: Data.now()});
+  logger.info(message);
 }
 
 module.exports = {
   authenticateApp,
   getUserCount,
-  logAsync
+  logAsync,
+  saveUserDataFile,
+  incrementUserCount
 }

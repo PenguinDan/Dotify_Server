@@ -17,9 +17,13 @@ const routing = function routing(express_router){
   router.route('/users').put(function (req, res) {
     USER_MIDDLEWARE.updateUser(req, res);
   });
-  // Get the user
+  // Logs in the user based on their authentication information
   router.route('/users').get(function (req, res) {
     USER_MIDDLEWARE.getUser(req, res);
+  });
+  // Get the playlists' of the user.
+  router.route('/playlist').get(function(req, res) {
+    MUSIC_MIDDLEWARE.getPlaylist(req, res);
   });
   return router;
 }
