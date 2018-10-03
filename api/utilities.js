@@ -50,18 +50,15 @@ function authenticateApp(req, res){
   });
 }
 
-// Checks how many users are currently in the system
-function getUserCount(){
-  return SERVER_DATA.UserCount;
-}
-
-// Increments the user count value by one in the JSON configuration file
-function incrementUserCount(){
-  // Retrieves the current user count and increments by one
-  newUserCount = getUserCount() + 1;
-  // Save the new value for the user count
-  SERVER_DATA.UserCount = newUserCount;
-  FS.writeFileSync(SERVER_DATA_FILEPATH, JSON.stringify(SERVER_DATA));
+// Checks whether a user exists with the specified username
+function userExists(username){
+  // The directory associated with a username
+  let userDirectory = `${USER_DATA_DIRECTORY}/${username}`;
+  // Look for the user file
+  if(!FS.existsSync(userDirectory)){
+    return false;
+  }
+  return true;
 }
 
 // Saves the user data
@@ -84,8 +81,7 @@ function logAsync(message){
 
 module.exports = {
   authenticateApp,
-  getUserCount,
+  userExists,
   logAsync,
   saveUserDataFile,
-  incrementUserCount
 }

@@ -21,6 +21,10 @@ const routing = function routing(express_router){
   router.route('/users').get(function (req, res) {
     USER_MIDDLEWARE.getUser(req, res);
   });
+  // Checks whether a username is available
+  router.route('/users/check').get(function(req, res){
+    USER_MIDDLEWARE.checkUserAvailability(req, res);
+  });
   // Get the playlists' of the user.
   router.route('/playlist').get(function(req, res) {
     MUSIC_MIDDLEWARE.getPlaylist(req, res);
