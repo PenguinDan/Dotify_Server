@@ -1,7 +1,7 @@
 // Modules
 const util = require('./utilities');
 const bcrypt = require('bcrypt');
-
+const CONSTANTS = require('./constants');
 
 // Check whether a username is available
 let checkUsernameAvailability = function(req, res){
@@ -13,18 +13,25 @@ let checkUsernameAvailability = function(req, res){
       if (!userDirectoryExists){
         return res.status(200).json({
 	  message: "Username does not exists",
-          code: 901
+          code: CONSTANTS.USER_NOT_FOUND_CODE
+	});
+      } else {
+	return res.status(200).json({
+	  message: "Username has been found, cannot be used",
+	  code: CONSTANTS.USER_FOUND_CODE
 	});
       }
     } else{
       util.logAsync("Username not provided for username availability check");
-      reject(res.status(400).json({message: "Username must be provided for availibility check"}));
+      res = res.status(400).json({message: "Username must be provided for availibility check"});
+      reject(res);
     }
   }).catch(function(error){
     util.logAsync("Error in check username availability");
     return error;
   });
 }
+
 // Creates the user account
 let createUser = function(req, res){
   // Instatiates an authentication promise
@@ -79,6 +86,7 @@ let createUser = function(req, res){
   });
 }
 
+
 let updateUser = function(req, res){
   // Instantiates an authentication promise
   util.authenticateApp(req, res).then(function(result){
@@ -94,7 +102,7 @@ let getUser = function(req, res){
     util.logAsync("Verifying user information");
     // Retrieve the user json file corresponding to the username
     if(req.body.username && req.body.password){
-
+      
     } else{
       res = res.status(400).json({message: "Username or Password is required for the login operation"});
       reject(res);
@@ -106,8 +114,11 @@ let getUser = function(req, res){
     return result;
   });
 }
+
+// Export functions and variables
 module.exports = {
   createUser,
   updateUser,
-  getUser
+  getUser,
+  checkUsernameAvailability
 };

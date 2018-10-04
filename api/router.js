@@ -1,5 +1,6 @@
 const USER_MIDDLEWARE = require('./user_middleware');
 const MUSIC_MIDDLEWARE = require('./music_middleware');
+const UTILITIES = require('./utilities');
 let router;
 
 const routing = function routing(express_router){
@@ -23,7 +24,7 @@ const routing = function routing(express_router){
   });
   // Checks whether a username is available
   router.route('/users/check').get(function(req, res){
-    USER_MIDDLEWARE.checkUserAvailability(req, res);
+    USER_MIDDLEWARE.checkUsernameAvailability(req, res);
   });
   // Get the playlists' of the user.
   router.route('/playlist').get(function(req, res) {

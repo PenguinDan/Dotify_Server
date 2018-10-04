@@ -1,5 +1,6 @@
 // Modules
 const FS = require('fs');
+const CONSTANTS = require('./constants');
 const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, label, prettyPrint } = format;
 
@@ -19,13 +20,10 @@ const logger = createLogger({
 const EMPTY_APPKEY_ERROR = 0;
 const INVALID_APPKEY_ERROR = 1;
 const INVALID_BODY_ERROR = 2;
-const CONFIG_FILEPATH = './api/config/config.json';
-const SERVER_DATA_FILEPATH = './api/config/server_data.json';
-const USER_DATA_DIRECTORY = './api/models/users/';
 
 // Configuration
-const CONFIG = JSON.parse(FS.readFileSync(CONFIG_FILEPATH));
-const SERVER_DATA = JSON.parse(FS.readFileSync(SERVER_DATA_FILEPATH));
+const CONFIG = JSON.parse(FS.readFileSync(CONSTANTS.CONFIG_FILEPATH));
+const SERVER_DATA = JSON.parse(FS.readFileSync(CONSTANTS.SERVER_DATA_FILEPATH));
 const APPKEY = CONFIG.AppKey;
 
 // Checks whether the application contains the correct credentials
@@ -53,7 +51,7 @@ function authenticateApp(req, res){
 // Checks whether a user exists with the specified username
 function userExists(username){
   // The directory associated with a username
-  let userDirectory = `${USER_DATA_DIRECTORY}/${username}`;
+  let userDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}/${username}`;
   // Look for the user file
   if(!FS.existsSync(userDirectory)){
     return false;
@@ -63,7 +61,7 @@ function userExists(username){
 
 // Saves the user data
 function saveUserDataFile(username, jsonFile){
-  let userDirectory = `${USER_DATA_DIRECTORY}/${username}`;
+  let userDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}/${username}`;
   let userDataFilePath = `${userDirectory}/user.json`;
 
   if (!FS.existsSync(userDirectory)){
@@ -72,6 +70,21 @@ function saveUserDataFile(username, jsonFile){
   // Saves the user json file into the directory
   // corresponding with the user's username
   FS.writeFileSync(userDataFilePath, JSON.stringify(jsonFile));
+}
+
+// Gets the user.json for user with given username parameter.
+async function getUserDataFile(username){
+ //Setting directory paths.
+ let userDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}/${username}`;
+ let userDataFilePath = `${userDirectory}/user.json`;
+ try{ 
+  //Retrieving JSON file for the user.
+  let userFile = await JSON.parse(FS.readFile(userDataFilePath));
+  return userFile;
+ }catch(error){
+  UTIL.logAsync("The user.json for user: "+ username +" does not exist");
+  return error;
+ }
 }
 
 // Asynchronously logs
