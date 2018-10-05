@@ -1,12 +1,23 @@
-function testPromise(){
-	return new Promise(function(resolve, reject){
-		resolve(1);
-	});
-}
+const bcrypt = require('bcrypt');
+const bluebird = require('bluebird');
+const fs = bluebird.promisifyAll(require('fs'));
+const Constants = require('./constants');
 
 async function testAsync(){
-	let value = await testPromise();
-	console.log(value);
+	try{
+		let value = await fs.readFileAsync('./config/config.json');
+		console.log(value);
+	}catch(error){
+		console.log("Error");
+	}
 }
 
-testAsync();
+class TestClass{
+  constructor(){
+    this.val = 1;
+  }
+}
+
+test = new TestClass();
+
+console.log(test.val);

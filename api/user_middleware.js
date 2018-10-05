@@ -5,37 +5,23 @@ const CONSTANTS = require('./constants');
 
 // Check whether a username is available
 let checkUsernameAvailability = function(req, res){
-  // Instantiates an authentication promise
-  util.authenticateApp(req, res).then(function(result){
-    username = req.get('username');
+  util.authenticateApp(req).then(function(result){
+    // Retrieve the username from the request
+    let username = req.get('username');
     if (username){
-      userDirectoryExists = util.userExists(username);
-      if (!userDirectoryExists){
-        return res.status(200).json({
-	  message: "Username does not exists",
-          code: CONSTANTS.USER_NOT_FOUND_CODE
-	});
-      } else {
-	return res.status(200).json({
-	  message: "Username has been found, cannot be used",
-	  code: CONSTANTS.USER_FOUND_CODE
-	});
-      }
     } else{
-      util.logAsync("Username not provided for username availability check");
-      res = res.status(400).json({message: "Username must be provided for availibility check"});
-      reject(res);
+      throw new util.RequestError(CONSTANTS.
     }
   }).catch(function(error){
-    util.logAsync("Error in check username availability");
-    return error;
+    util.logAsync("Check Username Availibility Error.\nError Message:"+error.message);
+    return res.status(error.code).json({"message" : error.message});
   });
 }
 
 // Creates the user account
 let createUser = function(req, res){
   // Instatiates an authentication promise
-  util.authenticateApp(req, res).then(function(result){
+  util.authenticateApp(req).then(function(result){
     util.logAsync("Creating User");
     // Make sure that all of the required fields are
     // in the body
@@ -57,7 +43,6 @@ let createUser = function(req, res){
     } else {
       util.logAsync("Create account body does not contain required information");
       res = res.status(400).json({message: "Body does not contain required information"});
-      reject(res);
     }
   }).then(function(result){
     util.logAsync("Exctracting user information from request for account creation");
@@ -96,22 +81,42 @@ let updateUser = function(req, res){
 }
 
 // Logs in the user
-let getUser = function(req, res){
+let getUser = async function(req, res){
   // Instantiates an authentication promise
-  util.authenticateApp(req, res).then(function(result){
+  util.authenticateApp(req, res).then(async function(result){
     util.logAsync("Verifying user information");
+    // Retrieve the username and password from the header
+    username = req.get("username");
+    password = req.get("password");
+
     // Retrieve the user json file corresponding to the username
-    if(req.body.username && req.body.password){
-      
+    if(username && password){
+      try{
+        userJson = await util.getUserDataFile(username);
+        util.logAsync("Verifying user information");
+        // Get the stored password
+        hashPassword = userJson.password;
+        // Check whether the passwords match
+        matches = await bcrypt.compare(password, hashPassword);
+        if (matches){
+	  util.logAsync("Password match");
+          // The password match, return a successful match
+	  return res.status(200).json({message : "Passwords match"});
+        } else {
+	  util.logAsync("Passwords do not match");
+          throw new Error("Passwords do not match!");
+        }
+      }catch(error){
+	util.logAsync("Error retrieving user file");
+	throw error;
+      }
     } else{
-      res = res.status(400).json({message: "Username or Password is required for the login operation"});
-      reject(res);
+      util.logAsync("Username or password has not been given by client");
+      throw new Error("Username or Password has not been given by client");
     }
-  }).then(function(result){
-  }).catch(function(result){
-    util.logAsync("Invalid Request Received for Login");
+  }).catch(function(error){
     // The user has given an invalid request
-    return result;
+    return res.status(400).json({message : error.message});
   });
 }
 

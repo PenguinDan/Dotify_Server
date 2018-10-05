@@ -43,9 +43,20 @@ let createPlaylist = function(req, res){
 //get a list of playlist from user.
 let getPlaylist = async function(req, res){
 	//Get the id of the user from req.
-	let result = await UTIL.authenticateApp(req, res).then().catch(function(error){
+	let result = await UTIL.authenticateApp(req, res)
+		.then(function(result){})//Then if the user is authenticated.
+		.catch(function(error){
+		//Returns with no playlist if the user could not be authenticated.
 		UTIL.logAsync("The app could not be authenticated.");
-	});	
+		return res.status(901).json({message:"The app was not authenticated."});
+		});	
+	//UTIL.logAsync(req.get("userid"));
+	let userJson = await UTIL.getUserDataFile(req.get("userid"), res)
+		.then(function(result){})
+		.catch(function(error){
+		//The JSON file for the user did not exist.
+		return res.status(204).json({message:"The user does not have any profile information."});
+		});
 
 }
 

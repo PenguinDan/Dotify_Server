@@ -1,5 +1,7 @@
+'use strict'
 // Modules
-const FS = require('fs');
+const BLUEBIRD = require('bluebird');
+const FS = BLUEBIRD.promisifyAll(require('fs'));
 const CONSTANTS = require('./constants');
 const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, label, prettyPrint } = format;
@@ -16,34 +18,50 @@ const logger = createLogger({
   transports: [new transports.Console()]
 });
 
-// Constant
-const EMPTY_APPKEY_ERROR = 0;
-const INVALID_APPKEY_ERROR = 1;
-const INVALID_BODY_ERROR = 2;
-
 // Configuration
 const CONFIG = JSON.parse(FS.readFileSync(CONSTANTS.CONFIG_FILEPATH));
 const SERVER_DATA = JSON.parse(FS.readFileSync(CONSTANTS.SERVER_DATA_FILEPATH));
 const APPKEY = CONFIG.AppKey;
 
+// Custom Classes
+// Class for defining authentication errors
+class RequestError extends Error{
+  // Constructor object for the AuthError object
+  // @Param:
+  //   errorCode: The error code associated with this error
+  //  ...params: All of the rest of the parameters for a normal Error object such
+  //             as the error message itself
+  constructor(errorCode, ...params){
+    // Pass remaining arguments to parent constructor
+    super(...params);
+
+    // Maintains proper stack trace for where our error was thrown
+    if (Error.captureStackTrace){
+      Error.captureStackTrace(this, AuthError);
+    }
+
+   this.code = errorCode;
+  }
+}
+
 // Checks whether the application contains the correct credentials
-function authenticateApp(req, res){
+function authenticateApp(req){
   return new Promise(function(resolve, reject){
-    // Retrieves the Application Key
+  // Retrieves the Application Key
     let appKey = req.get('AppKey');
     // Checks whether we have an application key
     if(appKey){
       if(appKey != APPKEY){
-	res = res.status(406).json({message: "Invalid AppKey has been provided."});
-        // The appkey given by the appication is invalid
-	reject(res);
+        let error = new RequestError(CONSTANTS.UNAUTHORIZED, "Invalid AppKey provided by client");
+        logAsync(error.code);
+        // The client has passed an invalid AppKey to the server
+        throw new RequestError(CONSTANTS.UNAUTHORIZED, "Invalid AppKey provided by client");
       }
       // The appkey given by the application is correct
-      resolve(res);
+      resolve(null);
     } else {
-	res = res.status(401).json({message: "Appkey Was not provided."});
-	// The appkey was not given by the application
-	reject(res);
+      // The client has not given us an AppKey
+      throw new RequestError(CONSTANTS.UNAUTHORIZED, "AppKey was not provided");
     }
   });
 }
@@ -75,16 +93,17 @@ function saveUserDataFile(username, jsonFile){
 // Gets the user.json for user with given username parameter.
 async function getUserDataFile(username){
  //Setting directory paths.
- let userDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}/${username}`;
+ let userDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}${username}`;
  let userDataFilePath = `${userDirectory}/user.json`;
- try{ 
   //Retrieving JSON file for the user.
-  let userFile = await JSON.parse(FS.readFile(userDataFilePath));
-  return userFile;
- }catch(error){
-  UTIL.logAsync("The user.json for user: "+ username +" does not exist");
-  return error;
- }
+  try{
+    let userFile = await FS.readFileAsync(userDataFilePath);
+    return JSON.parse(userFile);
+  }catch(error){
+    errorMessage = `Json file ${userDataFilePath} for ${username} cannot be found`;
+    logAsync(error.message);
+    throw new Error(errorMessage);
+  }
 }
 
 // Asynchronously logs
@@ -97,4 +116,6 @@ module.exports = {
   userExists,
   logAsync,
   saveUserDataFile,
+  getUserDataFile,
+  RequestError
 }
