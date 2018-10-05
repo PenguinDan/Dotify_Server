@@ -2,6 +2,8 @@ const bcrypt = require('bcrypt');
 const bluebird = require('bluebird');
 const fs = bluebird.promisifyAll(require('fs'));
 const Constants = require('./constants');
+const CRYPTO = require('crypto');
+
 
 async function testAsync(){
 	try{
@@ -16,8 +18,18 @@ class TestClass{
   constructor(){
     this.val = 1;
   }
+
+  static async testMethod(){
+    let anotherValue = await CRYPTO.randomBytes(48);
+    anotherValue = anotherValue.toString('base64');
+    return anotherValue;
+  }
 }
 
-test = new TestClass();
+async function test2Async(){
+  let val = await TestClass.testMethod();
+  console.log(val);
+}
 
-console.log(test.val);
+test2Async();
+

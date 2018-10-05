@@ -14,7 +14,7 @@ const routing = function routing(express_router){
   router.route('/users').post(function (req, res) {
     USER_MIDDLEWARE.createUser(req, res);
   });
-  // Update the user
+  // Update the user password
   router.route('/users').put(function (req, res) {
     USER_MIDDLEWARE.updateUser(req, res);
   });
