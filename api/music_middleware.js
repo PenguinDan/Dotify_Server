@@ -1,8 +1,8 @@
 'use strict'
 //Importing modules
 const FS = require('fs');
-const UTIL = require('.helper/utilities');
-const CONSTANTS = require('./constants');
+const UTIL = require('./helper/utilities');
+const CONSTANTS = require('./helper/constants');
 
 //Create playlist for the user.
 let createPlaylist = function(req, res){
@@ -23,7 +23,7 @@ let getPlaylist = async function(req, res){
 		.catch(function(error){
 		//The JSON file for the user did not exist.
 		UTIL.logAsync("Error");
-		return res.status(error.errorCode).json({message:"This is the message"});
+		return res.status(201).json({message:"This is the message"});
 		});
 
 }

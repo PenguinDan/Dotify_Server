@@ -1,6 +1,6 @@
 const USER_MIDDLEWARE = require('./user_middleware');
 const MUSIC_MIDDLEWARE = require('./music_middleware');
-const UTILITIES = require('./utilities');
+const UTILITIES = require('./helper/utilities');
 let router;
 
 const routing = function routing(express_router){

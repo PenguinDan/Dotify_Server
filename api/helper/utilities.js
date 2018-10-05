@@ -3,7 +3,6 @@
 const BLUEBIRD = require('bluebird');
 const FS = BLUEBIRD.promisifyAll(require('fs'));
 const CONSTANTS = require('./constants');
-const CRYPTO = require('crypto');
 const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, label, printf } = format;
 
@@ -45,28 +44,6 @@ class RequestError extends Error{
     }
 
    this.code = errorCode;
-  }
-}
-
-class ResetToken{
-  // Constructor for the ResetToken object
-  // @Param:
-  //  tokenVal: The token value to be stored
-  //  expiration: The expiration time
-  constructor(tokenVal, expiration){
-    this.token = tokenVal;
-    this.expirationTime = expiration;
-  }
-
-  // Generates a cryptographically strong random key with the specified
-  // byte length
-  // @Param:
-  //    byteLength: The byte length value that the key should contain
-  // @Return:
-  //    A cryptographically strong random key
-  static async generateToken(byteLength){
-    let token = await CRYPTO.randomBytes(byteLength);
-    return token.toString('base64');
   }
 }
 
@@ -139,7 +116,6 @@ function logAsync(message){
   logger.info(message);
 }
 
-
 // Checks if an object is empty
 function isEmpty(obj){
   for(let key in obj){
@@ -150,6 +126,15 @@ function isEmpty(obj){
   return true;
 }
 
+// Generates a date value depending on how far in minutes
+// in the future you want to generate
+function generateFutureDate(minutes){
+  // The minutes in milliseconds
+  let mil = minutes * 60000;
+  // Future time in milliseconds
+  return Date.now() + mil;
+}
+
 module.exports = {
   authenticateApp,
   userExists,
@@ -157,5 +142,6 @@ module.exports = {
   saveUserDataFile,
   getUserDataFile,
   isEmpty,
-  RequestError
+  RequestError,
+  generateFutureDate
 }
