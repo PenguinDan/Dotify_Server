@@ -82,31 +82,36 @@ function userExists(username){
 }
 
 // Saves the user data
-function saveUserDataFile(username, jsonFile){
-  let userDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}/${username}`;
+async function saveUserDataFile(username, jsonFile){
+  let userDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}${username}`;
   let userDataFilePath = `${userDirectory}/user.json`;
-
-  if (!FS.existsSync(userDirectory)){
-    FS.mkdirSync(userDirectory);
-  }
   // Saves the user json file into the directory
   // corresponding with the user's username
-  FS.writeFileSync(userDataFilePath, JSON.stringify(jsonFile));
+  await FS.writeFile(userDataFilePath, JSON.stringify(jsonFile),(err) => {
+    if (err){
+      let errorMessage = "Json file for " + username + " could not be saved.";
+      logAsync(errorMessage);
+      throw new RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
+    }
+    logAsync("User file save request for " + username + " was a success!");
+    return true;
+  });
 }
 
 // Gets the user.json for user with given username parameter.
 async function getUserDataFile(username){
- //Setting directory paths.
- let userDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}${username}`;
- let userDataFilePath = `${userDirectory}/user.json`;
+  //Setting directory paths.
+  let userDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}${username}`;
+  let userDataFilePath = `${userDirectory}/user.json`;
   //Retrieving JSON file for the user.
   try{
     let userFile = await FS.readFileAsync(userDataFilePath);
+    userFile = JSON.parse(userFile);
     logAsync("The user JSON file exist");
-    return JSON.parse(userFile);
+    return userFile;
   }catch(error){
-    errorMessage = `Json file ${userDataFilePath} for ${username} cannot be found`;
-    logAsync("The user json file does not exist");
+    let errorMessage = `Json file for ${username} cannot be found`;
+    logAsync(errorMessage);
     throw new RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
   }
 }

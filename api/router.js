@@ -26,10 +26,31 @@ const routing = function routing(express_router){
   router.route('/users/check').get(function(req, res){
     USER_MIDDLEWARE.checkUsernameAvailability(req, res);
   });
+  // Retrieves the security question for a user
+  router.route("/users/reset").get(function(req, res){
+    USER_MIDDLEWARE.getResetQuestions(req, res);
+  });
+
+  //Delete a playlist for the user.
+  router.route('/playlist').delete(function(req, res) {
+    MUSIC_MIDDLEWARE.deletePlaylist(req, res);
+  });
+
+  // Create a playlists for the user.
+  router.route('/playlist').put(function(req, res) {
+    MUSIC_MIDDLEWARE.createPlaylist(req, res);
+  });
+  
   // Get the playlists' of the user.
   router.route('/playlist').get(function(req, res) {
+    MUSIC_MIDDLEWARE.getPlaylistList(req, res);
+  });
+
+  // Get the playlistspage of the user.
+  router.route('/playlistpage').get(function(req, res) {
     MUSIC_MIDDLEWARE.getPlaylist(req, res);
   });
+  
   return router;
 }
 

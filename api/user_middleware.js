@@ -3,7 +3,8 @@
 const util = require('./helper/utilities');
 const bcrypt = require('bcrypt');
 const CONSTANTS = require('./helper/constants');
-
+const BLUEBIRD = require('bluebird');
+const FS = BLUEBIRD.promisifyAll(require('fs'));
 // Check whether a username is available
 let checkUsernameAvailability = async function(req, res){
   util.authenticateApp(req).then(function(result){
@@ -36,6 +37,8 @@ let createUser = function(req, res){
   // Instatiates an authentication promise
   util.authenticateApp(req).then(function(result){
     util.logAsync("Creating User");
+
+
     // Make sure that all of the required fields are
     // in the body
     if (req.body.username && req.body.password &&
@@ -61,19 +64,45 @@ let createUser = function(req, res){
     // The request has passed through all of the tests, create the user account
     let username = req.body.username;
     let passwordHash = await bcrypt.hash(req.body.password, 10);
-    let secAnswer1Hash = await bcrypt.hash(req.body.securityAnswer1);
-    let secAnswer2Hash = await bcypt.hash(req.body.securityAnswer2);
+    let secAnswer1Hash = await bcrypt.hash(req.body.securityAnswer1, 10);
+    let secAnswer2Hash = await bcrypt.hash(req.body.securityAnswer2, 10);
     // Create the JSON object to save the user's information
     let userData = {
       "username" : username,
-      "password" : hash,
+      "password" : passwordHash,
       "securityQuestion1" : req.body.securityQuestion1,
       "securityAnswer1" : secAnswer1Hash,
       "securityQuestion2" : req.body.securityQuestion2,
       "securityAnswer2" : secAnswer2Hash,
-      "passwordResetToken" : null,
+      "resetToken" : null,
       "playlist_titles": []
     };
+
+    //Create user directory
+    //TODO(Make the write check file exist asynchronous.)
+    let userDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}${username}`;
+    await FS.mkdir(userDirectory, (err) => {
+      if (err){
+        let errorMessage = "Directory for " + username + " could not be saved.";
+        util.logAsync(errorMessage);
+		    return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: errorMessage});
+      }
+      util.logAsync("Directory creation for " + username + " was a success!");
+    });
+
+    //Create playlist directory for user
+    //TODO(Make the write check file exist asynchronous.)
+    let playlistDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}${username}/playlists`;
+    util.logAsync(playlistDirectory);
+    await FS.mkdir(playlistDirectory, (err) => {
+      if (err){
+        let errorMessage = "Playlist directory for " + username + " could not be saved.";
+        util.logAsync(errorMessage);
+		    return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: errorMessage});
+      }
+      util.logAsync("Playlist directory creation for " + username + " was a success!");
+    });
+
     // Save the user data
     util.saveUserDataFile(username, userData);
     util.logAsync("User account created successfully");
@@ -85,31 +114,60 @@ let createUser = function(req, res){
   });
 }
 
-/*
+
 // Updates the user passwords
 let updateUser = function(req, res){
   // Instantiates an authentication promise
   util.authenticateApp(req).then(async function(result){
     // Retrieve the username and password from the body
     let username = req.body.username;
-    let resetToken = req.body.resetToken;
+    let clientToken = req.body.resetToken;
 
-    if (username && password){
+    if (username && req.body.password && clientToken){
       // Open the user file based on their username and check if the reset token matches
-     // the one that is currently stored
-     let userJson = await util.getUserDataFile(username);
-     // Retrieve the stored reset token and its expiration period
+      // the one that is currently stored
+      let userJson = await util.getUserDataFile(username);
+      let resetToken = userJson.resetToken;
+
+      // Build the Error object in case of errors
+      let requestError = util.RequestError(CONSTANTS.FORBIDDEN, "Forbidden client request");
+
+      // Make sure that the user even has a reset token
+      if (resetToken === null){
+	util.logAsync("User does not have a reset token assigned");
+        throw requestError;
+      }
+
+      // Make sure that the expiration time hasn't passed
+      if (resetToken.expirationTime < Date.now()){
+        util.logAsync("Client has passed in an expired token");
+        userJson.resetToken = null;
+        util.saveUserDataFile(username, userJson);
+        throw requestError;
+      }
+
+      // Check that the server and client reset tokens match
+      if (resetToken.token === clientToken){
+	return userJson;
+      } else {
+	throw requestError;
+      }
     } else {
-      throw new util.RequestError(CONSTANTS.BAD_REQUEST, "Username or password from client is empty.");
+      throw new util.RequestError(CONSTANTS.FORBIDDEN, "Username, password, or reset token from client is empty.");
     }
-  }).then(function(result){
+  }).then(async function(userJson){
+    // Set the new password for the json object
+    let passwordHash = await bcrypt.hash(request.body.password, 10);
+    userJson.password = passwordHash;
+    util.saveUserDataFile(req.body.username, userJson);
+    return res.status(CONSTANTS.ACCEPTED).json({"message" : "Password has been successfully changed"});
   }).catch(function(error){
     util.logAsync("Error in updateUser function.\nError Message:" + error.message);
     // The client has given an invalid request or we got an error from the server
     return res.status(error.code).json({"message" : error.message});
   });
 }
-*/
+
 
 // Logs in the user
 let getUser = async function(req, res){
@@ -123,7 +181,7 @@ let getUser = async function(req, res){
     // Retrieve the user json file corresponding to the username
     if(username && password){
       let userJson = await util.getUserDataFile(username);
-      util.logAsync("Verifying user information");
+      util.logAsync("Verifying user information for:" + userJson);
       // Get the stored password
       let hashPassword = userJson.password;
       // Check whether the passwords match
@@ -147,10 +205,37 @@ let getUser = async function(req, res){
   });
 }
 
+// Retrieves the reset questions for the specified user
+let getResetQuestions = function(req, res){
+  // Instantiates an authotication promise
+  util.authenticateApp(req).then(async function(result){
+    // Retrieve the user's username
+    let username = req.get("username");
+    // Check that the username was given by the user
+    if (username){
+      // Retrieve the user json file associated with their username
+      let userJson = await util.getUserDataFile(username);
+      return res.status(CONSTANTS.OK).json({
+	"securityQuestion1": userJson.securityQuestion1,
+	"securityQuestion2": userJson.securityQuestion2
+      });
+    } else {
+      util.logAsync("Username has not been given by client");
+      throw new util.RequestError(CONSTANTS.BAD_REQUEST, "Username has not been given by the client");
+    }
+  }).catch(function (error){
+    util.logAsync("Error in getResetQuestions.\nError Message:" + error.message);
+    // The user has given an invalid request
+    return res.status(error.code).json({message : error.message});
+  });
+}
+
+
 // Export functions and variables
 module.exports = {
   createUser,
-  //updateUser,
+  updateUser,
   getUser,
+  getResetQuestions,
   checkUsernameAvailability
 };
