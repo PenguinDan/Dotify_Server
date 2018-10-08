@@ -132,6 +132,18 @@ async function getUserRecommenderFile(username){
     throw new RequestError(CONSTANT.INTERNAL_SERVER_ERROR, errorMessage);
   }
 }
+
+// Saves the user recommender json file
+async function saveUserRecommenderFile(username, jsonObj){
+  // Setting directory paths
+  let userDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}${username}`;
+  let userRecommenderFilePath = `${userDirectory}/recommender.json`;
+  // Saves the user recommender json file in to its directory
+  // corresponding with the user's username
+  await FS.writeFile(userRecommenderFilePath, JSON.stringify(jsonObj));
+  return true;
+}
+
 // Asynchronously logs
 function logAsync(message){
   logger.info(message);
@@ -164,5 +176,7 @@ module.exports = {
   getUserDataFile,
   isEmpty,
   RequestError,
-  generateFutureDate
+  generateFutureDate,
+  getUserRecommenderFile,
+  saveUserRecommenderFile
 }

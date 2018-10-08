@@ -158,59 +158,67 @@ let createPlaylist = async function(req, res){
 
 //get a list of playlist from user.
 let getPlaylistList = async function(req, res){
-	//Get the id of the user from req.
-	await UTIL.authenticateApp(req)
-		.then(function(result){})
+	
+	try{
+		//Get the id of the user from req.
+		await UTIL.authenticateApp(req)
+			.then(function(result){})
+			.catch(function(error){
+				throw error;
+			});
+		//Retrieving the userJson for the requesting user.
+		let userJson = await UTIL.getUserDataFile(req.query.username)
+			.then(function(result){
+			return result;
+		})
 		.catch(function(error){
-			return res.status(error.code).json({message: error.message});
+			//The JSON file for the user did not exist.
+			throw error;
 		});
-	//Retrieving the userJson for the requesting user.
-	let userJson = await UTIL.getUserDataFile(req.query.username)
-		.then(function(result){
-		return result;
-	})
-	.catch(function(error){
-		//The JSON file for the user did not exist.
-		res.status(error.code).json({message: error.message});
-	});
-	if(!userJson){
-		return;
+		if(!userJson){
+			return;
+		}
+		//returning user's playlist_list with an 200 status.
+		return res.status(CONSTANTS.OK).json({playlist_titles: userJson.playlist_titles});
+	}catch(error){
+		UTIL.logAsync(error.message);
+		return res.status(error.code).json({message: error.message});
 	}
-	//returning user's playlist_list with an 200 status.
-	return res.status(CONSTANTS.OK).json({playlist_titles: userJson.playlist_titles});
 }
 
 
 
-//get acplaylist for user.
+//get a playlist for user.
 let getPlaylist = async function(req, res){
 
 	let playlistName =  req.query.playlist;
 	let playlistDir = userPlaylistDir(req.query.username, playlistName)
-	//Checking if the playlist name is null.
-	if(!playlistName){
-		UTIL.logAsync("Playlist name requested was invalid.")
-		return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Playlist name requested was invalid"});
-	}
-	//Authenticating the application from req.
-	await UTIL.authenticateApp(req)
-		.then(function(result){})
-		.catch(function(error){
-			return res.status(error.code).json({message: error.message});
-		});
-	
-	await FS.readFileAsync(playlistDir)
-			.then(function(result){
-				let playlistJson = JSON.parse(result);
-				UTIL.logAsync("The user playlist "+ playlistName + " was retrieved successfully!");
-				return res.status(CONSTANTS.OK).json(playlistJson);
-			})
-			.catch(function(err){
-				let errorMessage = "Json file for " + playlistName + " could not be retrieved.";
-				let error = new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
-				UTIL.logAsync(errorMessage);
-				return res.status(error.code).json({message: errorMessage});
+	try{
+		//Checking if the playlist name is null.
+		if(!playlistName){
+			UTIL.logAsync("Playlist name requested was invalid.")
+			return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Playlist name requested was invalid"});
+		}
+		//Authenticating the application from req.
+		await UTIL.authenticateApp(req)
+			.then(function(result){})
+			.catch(function(error){
+				throw error;
 			});
+		await FS.readFileAsync(playlistDir)
+				.then(function(result){
+					let playlistJson = JSON.parse(result);
+					UTIL.logAsync("The user playlist "+ playlistName + " was retrieved successfully!");
+					return res.status(CONSTANTS.OK).json(playlistJson);
+				})
+				.catch(function(err){
+					let errorMessage = "Json file for " + playlistName + " could not be retrieved.";
+					throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
+				});
+	}catch(err){
+		UTIL.logAsync(err.message);
+		res.status(err.code).json({message: err.message});
+	}
 }
 
 let addSongToPlaylist = async function(req, res){
@@ -218,71 +226,73 @@ let addSongToPlaylist = async function(req, res){
 	let songId = req.query.songid;
 	let playlistDir = userPlaylistDir(req.query.username, playlistName)
 	let songInfoDir = songIdInfoDir(songId);
-	UTIL.logAsync(songInfoDir);
 	try{
-	//Checking if the playlist name is null.
-	if(!playlistName){
-		UTIL.logAsync("Playlist name requested was invalid.")
-		return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Playlist name requested was invalid"});
-	}
-	//Checking if the song id is null;
-	if(!songId){
-		UTIL.logAsync("Song ID name requested was invalid.")
-		return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Song ID name requested was invalid"});
-	}
-
-	//Authenticating application.
-	await UTIL.authenticateApp(req)
-		.then(function(result){})
-		.catch(function(error){
-			return res.status(error.code).json({message: error.message});
-		});
-
-	//Reading the playlist JSON through the playlist.
-	let playlistJson = await FS.readFileAsync(playlistDir)
-		.then(function(result){
-			let playlistJson = JSON.parse(result);
-			UTIL.logAsync("The user playlist "+ playlistName + " was retrieved successfully!");
-			return playlistJson;
-		})
-		.catch(function(err){
-			let errorMessage = "Json file for " + playlistName + " could not be retrieved.";
-			throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
-		});
-
-	//Getting the song info JSON for a song through song id.
-	let songInfoJson = await FS.readFileAsync(songInfoDir)
-		.then(function(result){
-			let songInfoJson = JSON.parse(result);
-			UTIL.logAsync("The song info for song with song id "+ songId + " was retrieved successfully!");
-			return songInfoJson;
-		})
-		.catch(function(err){
-			let errorMessage = "The song info for song with song id " + songId + " could not be retrieved.";
-			throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
-		});
-
-	//Getting fields to push to the user for displaying the list of songs.
-	let songInfo = {
-		'songid': songId,
-		'song': songInfoJson['title'],
-		'artist': songInfoJson['artist'],
-		'album': songInfoJson['album'],
-	}
-	
-	//Updating the user.json with playlists.
-	playlistJson['songs'].push(songInfo); 
-
-	// Updating the playlist to include the new song, writing to json.
-	await FS.writeFile(playlistDir, JSON.stringify(playlistJson),(err) => {
-		if (err){
-			let errorMessage = "Json file for " + playlistName + " could not be saved.";
-			UTIL.logAsync(errorMessage);
-			return res.status(CONSTANTS.BAD_REQUEST).json({message: errorMessage});
+		//Checking if the playlist name is null.
+		if(!playlistName){
+			UTIL.logAsync("Playlist name requested was invalid.")
+			return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Playlist name requested was invalid"});
 		}
-		UTIL.logAsync("Playlist file save request for " + playlistName + " was a success!");
-		return res.status(CONSTANTS.OK).json(playlistJson);
-		});
+		//Checking if the song id is null;
+		if(!songId){
+			let errorMessage = "Song ID name requested was invalid.";
+			return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Song ID name requested was invalid"});
+		}
+
+		//Authenticating application.
+		await UTIL.authenticateApp(req)
+			.then(function(result){})
+			.catch(function(error){
+				throw error;
+			});
+
+		//Reading the playlist JSON through the playlist.
+		let playlistJson = await FS.readFileAsync(playlistDir)
+			.then(function(result){
+				let playlistJson = JSON.parse(result);
+				UTIL.logAsync("The user playlist "+ playlistName + " was retrieved successfully!");
+				return playlistJson;
+			})
+			.catch(function(err){
+				let errorMessage = "Json file for " + playlistName + " could not be retrieved.";
+				throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
+			});
+
+		//Getting the song info JSON for a song through song id.
+		let songInfoJson = await FS.readFileAsync(songInfoDir)
+			.then(function(result){
+				let songInfoJson = JSON.parse(result);
+				UTIL.logAsync("The song info for song with song id "+ songId + " was retrieved successfully!");
+				return songInfoJson;
+			})
+			.catch(function(err){
+				let errorMessage = "The song info for song with song id " + songId + " could not be retrieved.";
+				throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
+			});
+
+		//Getting fields to push to the user for displaying the list of songs.
+		let songInfo = {
+			'songid': songId,
+			'song': songInfoJson['title'],
+			'artist': songInfoJson['artist'],
+			'album': songInfoJson['album'],
+		}
+		
+		//Updating the user.json with playlists.
+		playlistJson['songs'].push(songInfo); 
+
+		//Updating the song count for playlist JSON.
+		playlistJson['song_count'] += 1;
+
+		// Updating the playlist to include the new song, writing to json.
+		await FS.writeFile(playlistDir, JSON.stringify(playlistJson),(err) => {
+			if (err){
+				let errorMessage = "Json file for " + playlistName + " could not be saved.";
+				UTIL.logAsync(errorMessage);
+				return res.status(CONSTANTS.BAD_REQUEST).json({message: errorMessage});
+			}
+			UTIL.logAsync("Playlist file save request for " + playlistName + " was a success!");
+			return res.status(CONSTANTS.OK).json(playlistJson);
+			});
 	}catch(err){
 		UTIL.logAsync(err.message);
 		res.status(err.code).json({message: err.message});
