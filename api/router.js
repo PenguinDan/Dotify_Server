@@ -54,6 +54,11 @@ const routing = function routing(express_router){
     MUSIC_MIDDLEWARE.getPlaylist(req, res);
   });
 
+  // Add a song to the specified playlist
+  router.route('/playlistpage').put(function(req, res) {
+    MUSIC_MIDDLEWARE.addSongToPlaylist(req, res);
+  });
+
   return router;
 }
 

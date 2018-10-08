@@ -80,33 +80,52 @@ let createUser = function(req, res){
       "playlist_titles": []
     };
 
-    //Create user directory
-    //TODO(Make the write check file exist asynchronous.)
-    let userDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}${username}`;
+    return userData;
+  }).then(async function(userData){
+    // Create user directory
+    let userDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}${userData.username}`;
     await FS.mkdir(userDirectory, (err) => {
       if (err){
-        let errorMessage = "Directory for " + username + " could not be saved.";
+        let errorMessage = "Directory for " + userData.username + " could not be saved.";
         util.logAsync(errorMessage);
-		    return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: errorMessage});
+        throw new util.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
       }
-      util.logAsync("Directory creation for " + username + " was a success!");
+      util.logAsync("Directory creation for " + userData.username + " was a success!");
     });
-
+    return userData;
+  }).then(async function(userData){
     //Create playlist directory for user
-    //TODO(Make the write check file exist asynchronous.)
-    let playlistDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}${username}/playlists`;
+    let playlistDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}${userData.username}/playlists`;
     util.logAsync(playlistDirectory);
     await FS.mkdir(playlistDirectory, (err) => {
       if (err){
-        let errorMessage = "Playlist directory for " + username + " could not be saved.";
+        let errorMessage = "Playlist directory for " + userData.username + " could not be saved.";
         util.logAsync(errorMessage);
-		    return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: errorMessage});
+        throw new util.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
       }
-      util.logAsync("Playlist directory creation for " + username + " was a success!");
+      util.logAsync("Playlist directory creation for " + userData.username + " was a success!");
+    });
+    return userData;
+  }).then(async function(userData){
+    // Create the recommender file for the user
+    let recommenderFile = `${CONSTANTS.USER_DATA_DIRECTORY}${userData.username}/recommender.json`;
+    // Create the empty recommender JSON object
+    let recommenderJson = {
+      "likes" : [],
+      "dislikes" : []
+    };
+    await FS.writeFile(recommenderFile, JSON.stringify(recommenderJson), (err) => {
+      if(err){
+        let errorMessage = "Recommender file for" + userData.username + " could not be created.";
+        util.logAsync(errorMessage);
+        throw new util.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
+      }
     });
 
-    // Save the user data
-    util.saveUserDataFile(username, userData);
+    return userData;
+  }).then(async function(userData){
+    // Save the user data file
+    await util.saveUserDataFile(userData.username, userData);
     util.logAsync("User account created successfully");
     // Send a response of a successful user creation
     return res.status(CONSTANTS.CREATED).json({"message":"User account created successfuly"});
@@ -123,7 +142,7 @@ let updateUser = function(req, res){
   util.authenticateApp(req).then(async function(result){
     // Retrieve the username and password from the body
     let username = req.body.username;
-    let clientToken = req.body.resetToken;
+    let clientToken = req.body.token;
 
     if (username && req.body.password && clientToken){
       // Open the user file based on their username and check if the reset token matches
@@ -132,7 +151,7 @@ let updateUser = function(req, res){
       let resetToken = userJson.resetToken;
 
       // Build the Error object in case of errors
-      let requestError = util.RequestError(CONSTANTS.FORBIDDEN, "Forbidden client request");
+      let requestError = new util.RequestError(CONSTANTS.FORBIDDEN, "Forbidden client request");
 
       // Make sure that the user even has a reset token
       if (resetToken === null){
@@ -152,6 +171,7 @@ let updateUser = function(req, res){
       if (resetToken.token === clientToken){
 	return userJson;
       } else {
+	util.logAsync("Client gave incorrect token for specified user");
 	throw requestError;
       }
     } else {
@@ -159,9 +179,13 @@ let updateUser = function(req, res){
     }
   }).then(async function(userJson){
     // Set the new password for the json object
-    let passwordHash = await bcrypt.hash(request.body.password, 10);
+    let passwordHash = await bcrypt.hash(req.body.password, 10);
     userJson.password = passwordHash;
     util.saveUserDataFile(req.body.username, userJson);
+    // Erase the token value for the user now
+    userJson.resetToken = null;
+    // Save the user json file
+    util.saveUserDataFile(userJson.username, userJson);
     return res.status(CONSTANTS.ACCEPTED).json({"message" : "Password has been successfully changed"});
   }).catch(function(error){
     util.logAsync("Error in updateUser function.\nError Message:" + error.message);
@@ -255,7 +279,7 @@ let checkQuestionAnswers = function(req, res){
 	// Generate the security token for the user
 	let securityToken = await ResetToken.generateToken(128);
         // Generate the future time that the token is supposed to expire in
-        let expirationTime = util.generateFutureDate(10);
+        let expirationTime = util.generateFutureDate(30);
 	// Create the ResetToken object for the user
 	let token = new ResetToken(securityToken, expirationTime);
 	userJson.resetToken = token;
@@ -265,7 +289,7 @@ let checkQuestionAnswers = function(req, res){
 	// Send a response of a successfull token creation
 	return res.status(CONSTANTS.ACCEPTED).json({
 	  "message" : "Security questions validated successfully",
-	  "token" : token
+	  "token" : token.token
 	});
       } else {
 	throw new util.RequestError(CONSTANTS.NOT_ACCEPTABLE, "Security answers not acceptable");

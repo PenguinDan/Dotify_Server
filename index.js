@@ -9,15 +9,23 @@ const ROUTES = require('./api/router');
 const BODY_PARSER = require('body-parser');
 const FS = require('fs');
 const HELMET = require('helmet');
+const DGRAM = require('dgram');
+const MUSIC_STREAM = require('./api/music_streaming');
+const RECOMMENDER = require('./api/recommender');
+
 
 // Setup Express routes
 const HTTPAPP = EXPRESS();
 const HTTPSAPP = EXPRESS();
+const MUSIC_STREAM_SOCKET = DGRAM.createSocket('udp4');
+const RECOMMENDER_SOCKET = DGRAM.createSocket('udp4');
 
 // File Constants
 const ONE_YEAR = 31536000000;
 const HTTP_PORT = 80;
 const SECURE_PORT = 443;
+const MUSIC_STREAM_PORT = 40000;
+const RECOMMENDER_PORT = 50000;
 const CERT_LOC = '/etc/letsencrypt/live/www.dotify.online/';
 const ROUTER = ROUTES(EXPRESS.Router());
 
@@ -63,3 +71,17 @@ let options = {
 
 HTTPS.createServer(options, HTTPSAPP).listen(SECURE_PORT);
 HTTP.createServer(HTTPAPP).listen(HTTP_PORT);
+
+
+// Setup UDP Sockets
+MUSIC_STREAM_SOCKET.on('message', function(message, rinfo){
+
+});
+
+RECOMMENDER_SOCKET.on('message', function(message, rinfo){
+
+});
+
+
+MUSIC_STREAM_SOCKET.bind(MUSIC_STREAM_PORT);
+RECOMMENDER_SOCKET.bind(RECOMMENDER_PORT);

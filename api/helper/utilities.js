@@ -116,6 +116,22 @@ async function getUserDataFile(username){
   }
 }
 
+// Gets the recommender.json for user with given username parameter
+async function getUserRecommenderFile(username){
+  // Setting directory paths
+  let userDirectory = `${CONSTANTS.USER_DATA_DIRECTORY}${username}`;
+  let userRecommenderFilePath = `${userDirectory}/recommender.json`;
+  try {
+    let recommenderFile = await FS.readFileAsync(userRecommenderFilePath);
+    recommenderFile = JSON.parse(recommenderFile);
+    logAsync("The recommender JSON file.");
+    return recommenderFile;
+  } catch(error){
+    let errorMessage = `Recommender file for ${username} could not be found`;
+    logAsync(errorMessage);
+    throw new RequestError(CONSTANT.INTERNAL_SERVER_ERROR, errorMessage);
+  }
+}
 // Asynchronously logs
 function logAsync(message){
   logger.info(message);

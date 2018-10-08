@@ -9,6 +9,9 @@ var dateTime = require('node-datetime');
 function userPlaylistDir(username, playlist){
 	return `${CONSTANTS.USER_DATA_DIRECTORY}${username}/playlists/${playlist}.json`;
 }
+function songIdInfoDir(songId){
+	return `${CONSTANTS.SONG_INFO_DIRECTORY}/${songId}.json`
+}
 
 //Delete playlist for the user.
 let deletePlaylist = async function(req, res){
@@ -184,12 +187,12 @@ let getPlaylist = async function(req, res){
 
 	let playlistName =  req.query.playlist;
 	let playlistDir = userPlaylistDir(req.query.username, playlistName)
-	
+	//Checking if the playlist name is null.
 	if(!playlistName){
 		UTIL.logAsync("Playlist name requested was invalid.")
 		return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Playlist name requested was invalid"});
 	}
-	//Get the id of the user from req.
+	//Authenticating the application from req.
 	await UTIL.authenticateApp(req)
 		.then(function(result){})
 		.catch(function(error){
@@ -210,6 +213,82 @@ let getPlaylist = async function(req, res){
 			});
 }
 
+let addSongToPlaylist = async function(req, res){
+	let playlistName =  req.query.playlist;
+	let songId = req.query.songid;
+	let playlistDir = userPlaylistDir(req.query.username, playlistName)
+	let songInfoDir = songIdInfoDir(songId);
+	UTIL.logAsync(songInfoDir);
+	try{
+	//Checking if the playlist name is null.
+	if(!playlistName){
+		UTIL.logAsync("Playlist name requested was invalid.")
+		return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Playlist name requested was invalid"});
+	}
+	//Checking if the song id is null;
+	if(!songId){
+		UTIL.logAsync("Song ID name requested was invalid.")
+		return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Song ID name requested was invalid"});
+	}
+
+	//Authenticating application.
+	await UTIL.authenticateApp(req)
+		.then(function(result){})
+		.catch(function(error){
+			return res.status(error.code).json({message: error.message});
+		});
+
+	//Reading the playlist JSON through the playlist.
+	let playlistJson = await FS.readFileAsync(playlistDir)
+		.then(function(result){
+			let playlistJson = JSON.parse(result);
+			UTIL.logAsync("The user playlist "+ playlistName + " was retrieved successfully!");
+			return playlistJson;
+		})
+		.catch(function(err){
+			let errorMessage = "Json file for " + playlistName + " could not be retrieved.";
+			throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
+		});
+
+	//Getting the song info JSON for a song through song id.
+	let songInfoJson = await FS.readFileAsync(songInfoDir)
+		.then(function(result){
+			let songInfoJson = JSON.parse(result);
+			UTIL.logAsync("The song info for song with song id "+ songId + " was retrieved successfully!");
+			return songInfoJson;
+		})
+		.catch(function(err){
+			let errorMessage = "The song info for song with song id " + songId + " could not be retrieved.";
+			throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
+		});
+
+	//Getting fields to push to the user for displaying the list of songs.
+	let songInfo = {
+		'songid': songId,
+		'song': songInfoJson['title'],
+		'artist': songInfoJson['artist'],
+		'album': songInfoJson['album'],
+	}
+	
+	//Updating the user.json with playlists.
+	playlistJson['songs'].push(songInfo); 
+
+	// Updating the playlist to include the new song, writing to json.
+	await FS.writeFile(playlistDir, JSON.stringify(playlistJson),(err) => {
+		if (err){
+			let errorMessage = "Json file for " + playlistName + " could not be saved.";
+			UTIL.logAsync(errorMessage);
+			return res.status(CONSTANTS.BAD_REQUEST).json({message: errorMessage});
+		}
+		UTIL.logAsync("Playlist file save request for " + playlistName + " was a success!");
+		return res.status(CONSTANTS.OK).json(playlistJson);
+		});
+	}catch(err){
+		UTIL.logAsync(err.message);
+		res.status(err.code).json({message: err.message});
+	}
+}
+
 
 
 
@@ -218,5 +297,6 @@ module.exports = {
 	getPlaylistList,
 	getPlaylist,
 	deletePlaylist,
-	userPlaylistDir
+	userPlaylistDir,
+	addSongToPlaylist,
 };
