@@ -15,7 +15,7 @@ let addUserMusicData = async function(message){
       // Add the one hot encoded vector
       recommender.push(message.ohe);
       // Save the changes
-      
+      await UTIL.saveUserRecommenderFile(username, recommender);
     }
   } catch(error){
     UTIL.logAsync(error.message);

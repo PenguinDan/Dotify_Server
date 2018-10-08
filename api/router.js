@@ -54,9 +54,14 @@ const routing = function routing(express_router){
     MUSIC_MIDDLEWARE.getPlaylist(req, res);
   });
 
-  // Add a song to the specified playlist
+  // Add a song to the specified playlist.
   router.route('/playlistpage').put(function(req, res) {
     MUSIC_MIDDLEWARE.addSongToPlaylist(req, res);
+  });
+
+  //Delete a song from the specified playlist.
+  router.route('/playlistpage').delete(function(req, res) {
+    MUSIC_MIDDLEWARE.deleteSongFromPlaylist(req, res);
   });
 
   return router;

@@ -15,144 +15,145 @@ function songIdInfoDir(songId){
 
 //Delete playlist for the user.
 let deletePlaylist = async function(req, res){
-	let playlistName = req.query.playlist;
-	//Get the id of the user from req.
-	await UTIL.authenticateApp(req)
-		.then(function(result){})
-		.catch(function(error){
-			return res.status(error.code).json({message: error.message});
-		});
-	//Retrieving the userJson for the requesting user.
-	let userJson = await UTIL.getUserDataFile(req.query.username)
-		.then(function(result){
-			return result;
-		})
-		.catch(function(error){
-			//The JSON file for the user did not exist.
-			res.status(error.code).json({message: error.message});
-		});
-	if(!userJson){
-		return;
-	}
-		//Checking if the playlist request name is null.
-	if(!playlistName){
-		UTIL.logAsync("The delete playlist param was not given a valid playlist name.");
-		return res.status(CONSTANTS.BAD_REQUEST).json({message: "The delete playlist was not given a valid playlist name."});
-	}
+	try{
+		let playlistName = req.query.playlist;
+		//Get the id of the user from req.
+		await UTIL.authenticateApp(req)
+			.then(function(result){})
+			.catch(function(error){
+				throw error;
+			});
+		//Retrieving the userJson for the requesting user.
+		let userJson = await UTIL.getUserDataFile(req.query.username)
+			.then(function(result){
+				return result;
+			})
+			.catch(function(error){
+				//The JSON file for the user did not exist.
+				throw error;
+			});
 
-	if(!userJson['playlist_titles'].includes(playlistName)){
-		UTIL.logAsync("The playlist for the user does not exist");
-		return res.status(CONSTANTS.BAD_REQUEST).json({message: "The playlist for the user does not exist."});
-	}
-
-	//Deleting the playlist from the user json.
-	for(var i = 0; i < userJson['playlist_titles'].length; i++){
-		if(userJson['playlist_titles'][i] == playlistName){
-			userJson['playlist_titles'].splice(i,1);
+			//Checking if the playlist request name is null.
+		if(!playlistName){
+			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "The delete playlist was not given a valid playlist name.");
 		}
-	}
 
-	let playlistDir = userPlaylistDir(req.query.username, playlistName)
-
-	await FS.unlink(playlistDir, (err) => {
-		if (err){
-			let errorMessage = "Json file for " + playlistName + " could not be deleted.";
-			UTIL.logAsync(errorMessage);
-			return res.status(CONSTANTS.BAD_REQUEST).json({message: errorMessage});
+		if(!userJson['playlist_titles'].includes(playlistName)){
+			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "The playlist for the user does not exist.");
 		}
-		UTIL.logAsync("Playlist file delete request for " + playlistName+ " was a success!");
-		return true;
-	});
 
-	//Saving the user.json with the new playlist saved.
-	await UTIL.saveUserDataFile(req.query.username, userJson)
-		.then(function(result){
-			//returning user's json file with an 200 status.
-			return res.status(CONSTANTS.OK).json(userJson);
-		})
-		.catch(function(error){
-			//The JSON file for the user did not exist.
-			return res.status(error.code).json({message: error.message});
+		//Deleting the playlist from the user json.
+		for(var i = 0; i < userJson['playlist_titles'].length; i++){
+			if(userJson['playlist_titles'][i] == playlistName){
+				userJson['playlist_titles'].splice(i,1);
+			}
+		}
+
+		let playlistDir = userPlaylistDir(req.query.username, playlistName)
+
+		await FS.unlink(playlistDir, (err) => {
+			if (err){
+				let errorMessage = "Json file for " + playlistName + " could not be deleted.";
+				throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
+			}
+			UTIL.logAsync("Playlist file delete request for " + playlistName+ " was a success!");
+			return true;
 		});
+
+		//Saving the user.json with the new playlist saved.
+		await UTIL.saveUserDataFile(req.query.username, userJson)
+			.then(function(result){
+				//returning user's json file with an 200 status.
+				return res.status(CONSTANTS.OK).json(userJson);
+			})
+			.catch(function(error){
+				//The JSON file for the user did not exist.
+				throw error;
+			});
+	}catch(error){
+		UTIL.logAsync(error.message);
+		return res.status(error.code).json({message: error.message});
+	}
 
 }
 
 //Create playlist for the user.
 let createPlaylist = async function(req, res){
+	try{
+		let playlistName = req.query.playlist;
 
-	let playlistName = req.query.playlist;
-
-	//Get the id of the user from req.
-	await UTIL.authenticateApp(req)
-		.then(function(result){})
-		.catch(function(error){
-			return res.status(error.code).json({message: error.message});
-		});
-	//Retrieving the userJson for the requesting user.
-	let userJson = await UTIL.getUserDataFile(req.query.username)
-		.then(function(result){
-		return result;
-		})
-		.catch(function(error){
-			//The JSON file for the user did not exist.
-			return res.status(error.code).json({message: error.message});
-		});
-
-	if(!userJson){
-		return;
-	}
-	
-	//Checking if the playlist request name is null.
-	if(!playlistName){
-		UTIL.logAsync("The create playlist was not given a valid playlist name.");
-		return res.status(CONSTANTS.BAD_REQUEST).json({message: "The new playlist name was not specified with request."});
-	}
-
-	if(userJson['playlist_titles'].includes(playlistName)){
-		UTIL.logAsync("The playlist for the user already exists.");
-		return res.status(CONSTANTS.BAD_REQUEST).json({message: "The playlist for the user already exist."});
-	}
-
-	let playlistDir = userPlaylistDir(req.query.username, playlistName)
-	
-	//Setting the date for when the playlist was created.
-	var dt = dateTime.create();
-	dt.format('m/d/Y');
-	let date = new Date(dt.now());
-
-	//Creating JSON object for the playlist.
-	let playlistJson = {
-		'name' : playlistName,
-		'songs' : [],
-		'song_count': 0,
-		'created_date': date,
-	}
-
-	// User playlist.json for specified playlist.
-	// corresponding with the user's username
-	await FS.writeFile(playlistDir, JSON.stringify(playlistJson),(err) => {
-		if (err){
-			let errorMessage = "Json file for " + playlistName + " could not be saved.";
-			UTIL.logAsync(errorMessage);
-			return res.status(CONSTANTS.BAD_REQUEST).json({message: errorMessage});
+		//Get the id of the user from req.
+		await UTIL.authenticateApp(req)
+			.then(function(result){})
+			.catch(function(error){
+				throw error;
+			});
+		//Retrieving the userJson for the requesting user.
+		let userJson = await UTIL.getUserDataFile(req.query.username)
+			.then(function(result){
+			return result;
+			})
+			.catch(function(error){
+				//The JSON file for the user did not exist.
+				throw error;
+			});
+		
+		if(!userJson){
+			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "The username given was null.");
 		}
-		UTIL.logAsync("Playlist file save request for " + playlistName+ " was a success!");
-		return true;
-		});
+		
+		//Checking if the playlist request name is null.
+		if(!playlistName){
+			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "The new playlist name was not specified with request.");
+		}
 
-	//Updating the user.json with playlists.
-	userJson['playlist_titles'].push(playlistName);
+		if(userJson['playlist_titles'].includes(playlistName)){
+			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST,"The playlist for the user already exist.");
+		}
 
-	//Saving the user.json with the new playlist saved.
-	await UTIL.saveUserDataFile(req.query.username, userJson)
-		.then(function(result){
-			//returning user's json file with an 200 status.
-			return res.status(CONSTANTS.OK).json(userJson);
-		})
-		.catch(function(error){
-			//The JSON file for the user did not exist.
-			return res.status(error.code).json({message: error.message});
-		});
+		let playlistDir = userPlaylistDir(req.query.username, playlistName)
+		
+		//Setting the date for when the playlist was created.
+		var dt = dateTime.create();
+		dt.format('m/d/Y');
+		let date = new Date(dt.now());
+
+		//Creating JSON object for the playlist.
+		let playlistJson = {
+			'name' : playlistName,
+			'songs' : [],
+			'song_count': 0,
+			'created_date': date,
+		}
+
+		// User playlist.json for specified playlist.
+		// corresponding with the user's username
+		await FS.writeFile(playlistDir, JSON.stringify(playlistJson),(err) => {
+			if (err){
+				let errorMessage = "Json file for " + playlistName + " could not be saved.";
+				throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
+			}
+			UTIL.logAsync("Playlist file save request for " + playlistName+ " was a success!");
+			return true;
+			});
+
+		//Updating the user.json with playlists.
+		userJson['playlist_titles'].push(playlistName);
+
+		//Saving the user.json with the new playlist saved.
+		await UTIL.saveUserDataFile(req.query.username, userJson)
+			.then(function(result){
+				//returning user's json file with an 200 status.
+				return res.status(CONSTANTS.OK).json(userJson);
+			})
+			.catch(function(error){
+				//The JSON file for the user did not exist.
+				throw error;
+			});
+	}catch(error){
+		UTIL.logAsync(error.message);
+		return res.status(error.code).json({message: error.message});
+	}
 
 }
 
@@ -176,7 +177,7 @@ let getPlaylistList = async function(req, res){
 			throw error;
 		});
 		if(!userJson){
-			return;
+			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "The username given was null.");
 		}
 		//returning user's playlist_list with an 200 status.
 		return res.status(CONSTANTS.OK).json({playlist_titles: userJson.playlist_titles});
@@ -191,9 +192,13 @@ let getPlaylistList = async function(req, res){
 //get a playlist for user.
 let getPlaylist = async function(req, res){
 
-	let playlistName =  req.query.playlist;
-	let playlistDir = userPlaylistDir(req.query.username, playlistName)
 	try{
+		if(!req.query.username){
+			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "The username given was null.");
+		}
+		let playlistName =  req.query.playlist;
+		let playlistDir = userPlaylistDir(req.query.username, playlistName)
+	
 		//Checking if the playlist name is null.
 		if(!playlistName){
 			UTIL.logAsync("Playlist name requested was invalid.")
@@ -275,6 +280,7 @@ let addSongToPlaylist = async function(req, res){
 			'song': songInfoJson['title'],
 			'artist': songInfoJson['artist'],
 			'album': songInfoJson['album'],
+			'liked': false,
 		}
 		
 		//Updating the user.json with playlists.
@@ -287,8 +293,79 @@ let addSongToPlaylist = async function(req, res){
 		await FS.writeFile(playlistDir, JSON.stringify(playlistJson),(err) => {
 			if (err){
 				let errorMessage = "Json file for " + playlistName + " could not be saved.";
-				UTIL.logAsync(errorMessage);
-				return res.status(CONSTANTS.BAD_REQUEST).json({message: errorMessage});
+				throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
+			}
+			UTIL.logAsync("Playlist file save request for " + playlistName + " was a success!");
+			return res.status(CONSTANTS.OK).json(playlistJson);
+			});
+	}catch(err){
+		UTIL.logAsync(err.message);
+		res.status(err.code).json({message: err.message});
+	}
+}
+
+
+
+let deleteSongFromPlaylist = async function(req, res){
+	let playlistName =  req.query.playlist;
+	let songId = req.query.songid;
+	let playlistDir = userPlaylistDir(req.query.username, playlistName)
+	try{
+		//Checking if the playlist name is null.
+		if(!playlistName){
+			UTIL.logAsync("Playlist name requested was invalid.")
+			return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Playlist name requested was invalid"});
+		}
+		//Checking if the song id is null;
+		if(!songId){
+			let errorMessage = "Song ID name requested was invalid.";
+			return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Song ID name requested was invalid"});
+		}
+
+		//Authenticating application.
+		await UTIL.authenticateApp(req)
+			.then(function(result){})
+			.catch(function(error){
+				throw error;
+			});
+
+		//Reading the playlist JSON through the playlist.
+		let playlistJson = await FS.readFileAsync(playlistDir)
+			.then(function(result){
+				let playlistJson = JSON.parse(result);
+				UTIL.logAsync("The user playlist "+ playlistName + " was retrieved successfully!");
+				return playlistJson;
+			})
+			.catch(function(err){
+				let errorMessage = "Json file for " + playlistName + " could not be retrieved.";
+				throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
+			});
+		
+
+		let inPlaylist = false;
+		//Deleting the playlist from the user json.
+		for(var i = 0; i < playlistJson['songs'].length; i++){
+			if(playlistJson['songs'][i]['songid'] == songId){
+				UTIL.logAsync("Removing song " + songId + " from the playlist!");
+				playlistJson['songs'].splice(i,1);
+				inPlaylist = true;
+				break;
+			}
+		}
+
+		if(!inPlaylist){
+			let errorMessage = " The song was not in the playlist.";
+			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
+		}
+
+		//Updating the song count for playlist JSON.
+		playlistJson['song_count'] -= 1;
+
+		// Updating the playlist to include the new song, writing to json.
+		await FS.writeFile(playlistDir, JSON.stringify(playlistJson),(err) => {
+			if (err){
+				let errorMessage = "Json file for " + playlistName + " could not be saved.";
+				throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
 			}
 			UTIL.logAsync("Playlist file save request for " + playlistName + " was a success!");
 			return res.status(CONSTANTS.OK).json(playlistJson);
@@ -309,4 +386,5 @@ module.exports = {
 	deletePlaylist,
 	userPlaylistDir,
 	addSongToPlaylist,
+	deleteSongFromPlaylist,
 };
