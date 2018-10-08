@@ -32,6 +32,11 @@ const routing = function routing(express_router){
   });
   // Check the security question answers for the user
   router.route('/users/reset-check').get(function(req, res){
+    // Retrieve the IP address of the request
+    let requestIp = req.ip;
+    // Check whether the request was already sent by the particular
+    // ip address and that a response is still being made out
+    let secQueue = 
     USER_MIDDLEWARE.checkQuestionAnswers(req, res);
   });
   //Delete a playlist for the user.

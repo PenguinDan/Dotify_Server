@@ -144,6 +144,24 @@ async function saveUserRecommenderFile(username, jsonObj){
   return true;
 }
 
+// Retrieves the Json file for the queue of ip addresses that are still
+// waiting to receive their responses
+async function getSecurityAnswerQueue(){
+  logAsync("Retrieving and returning security answer queue object");
+  let secQueue = await FS.readFileAsync(CONSTANTS.SECURITY_ANSWER_QUEUE_FILEPATH);
+  // Parse the object received into their set items
+  let setObject = JSON.parse(secQueue, function(key, value){
+    return new Set(value);
+  }
+  return setObject;
+}
+
+// Serializes a set object into its JSON equivalent
+async function saveSecurityAnswerQueue(obj){
+  logAsync("Saving security answer queue json object");
+  await FS.writeFile(CONSTANTS.SECURITY_ANSWER_QUEUE_FILEPATH, JSON.stringify(obj));
+}
+
 // Asynchronously logs
 function logAsync(message){
   logger.info(message);
