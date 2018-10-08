@@ -14,7 +14,7 @@ const routing = function routing(express_router){
   router.route('/users').post(function (req, res) {
     USER_MIDDLEWARE.createUser(req, res);
   });
-  // Update the user password
+  // Update the user password.
   router.route('/users').put(function (req, res) {
     USER_MIDDLEWARE.updateUser(req, res);
   });
@@ -30,7 +30,10 @@ const routing = function routing(express_router){
   router.route("/users/reset").get(function(req, res){
     USER_MIDDLEWARE.getResetQuestions(req, res);
   });
-
+  // Check the security question answers for the user
+  router.route('/users/reset-check').get(function(req, res){
+    USER_MIDDLEWARE.checkQuestionAnswers(req, res);
+  });
   //Delete a playlist for the user.
   router.route('/playlist').delete(function(req, res) {
     MUSIC_MIDDLEWARE.deletePlaylist(req, res);
@@ -40,7 +43,7 @@ const routing = function routing(express_router){
   router.route('/playlist').put(function(req, res) {
     MUSIC_MIDDLEWARE.createPlaylist(req, res);
   });
-  
+
   // Get the playlists' of the user.
   router.route('/playlist').get(function(req, res) {
     MUSIC_MIDDLEWARE.getPlaylistList(req, res);
@@ -50,7 +53,7 @@ const routing = function routing(express_router){
   router.route('/playlistpage').get(function(req, res) {
     MUSIC_MIDDLEWARE.getPlaylist(req, res);
   });
-  
+
   return router;
 }
 

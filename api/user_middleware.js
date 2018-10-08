@@ -5,6 +5,8 @@ const bcrypt = require('bcrypt');
 const CONSTANTS = require('./helper/constants');
 const BLUEBIRD = require('bluebird');
 const FS = BLUEBIRD.promisifyAll(require('fs'));
+const { ResetToken } = require('./helper/security');
+
 // Check whether a username is available
 let checkUsernameAvailability = async function(req, res){
   util.authenticateApp(req).then(function(result){
@@ -64,8 +66,8 @@ let createUser = function(req, res){
     // The request has passed through all of the tests, create the user account
     let username = req.body.username;
     let passwordHash = await bcrypt.hash(req.body.password, 10);
-    let secAnswer1Hash = await bcrypt.hash(req.body.securityAnswer1, 10);
-    let secAnswer2Hash = await bcrypt.hash(req.body.securityAnswer2, 10);
+    let secAnswer1Hash = await bcrypt.hash(req.body.securityAnswer1.toLowerCase(), 10);
+    let secAnswer2Hash = await bcrypt.hash(req.body.securityAnswer2.toLowerCase(), 10);
     // Create the JSON object to save the user's information
     let userData = {
       "username" : username,
@@ -215,6 +217,8 @@ let getResetQuestions = function(req, res){
     if (username){
       // Retrieve the user json file associated with their username
       let userJson = await util.getUserDataFile(username);
+      // Send the reset questions
+      util.logAsync("Sending reset questions back to client");
       return res.status(CONSTANTS.OK).json({
 	"securityQuestion1": userJson.securityQuestion1,
 	"securityQuestion2": userJson.securityQuestion2
@@ -230,6 +234,54 @@ let getResetQuestions = function(req, res){
   });
 }
 
+// Check whether the question answers for the reset are correct
+let checkQuestionAnswers = function(req, res){
+  util.authenticateApp(req).then(async function(result){
+    // Check whether the request constains the required information
+    let username = req.get("username");
+    let securityAnswer1 = req.get("securityAnswer1");
+    let securityAnswer2 = req.get("securityAnswer2");
+
+    if (username && securityAnswer1 && securityAnswer2){
+      // Retrieve the user json file
+      let userJson = await util.getUserDataFile(username);
+      // Retrieve the hashes for the security answers
+      let secHash1 = userJson.securityAnswer1;
+      let secHash2 = userJson.securityAnswer2;
+      // Check whether the answers passed by the client are correct
+      let secCorrect1 = await bcrypt.compare(securityAnswer1.toLowerCase(), secHash1);
+      let secCorrect2 = await bcrypt.compare(securityAnswer2.toLowerCase(), secHash2);
+      if (secCorrect1 && secCorrect2) {
+	// Generate the security token for the user
+	let securityToken = await ResetToken.generateToken(128);
+        // Generate the future time that the token is supposed to expire in
+        let expirationTime = util.generateFutureDate(10);
+	// Create the ResetToken object for the user
+	let token = new ResetToken(securityToken, expirationTime);
+	userJson.resetToken = token;
+	// Save the json user information
+	util.saveUserDataFile(username, userJson);
+	util.logAsync("User json file saved successfully from Check Question Answers with token");
+	// Send a response of a successfull token creation
+	return res.status(CONSTANTS.ACCEPTED).json({
+	  "message" : "Security questions validated successfully",
+	  "token" : token
+	});
+      } else {
+	throw new util.RequestError(CONSTANTS.NOT_ACCEPTABLE, "Security answers not acceptable");
+      }
+    } else {
+      throw new util.RequestError(CONSTANTS.BAD_REQUEST, "Request does not contain required header information");
+    }
+  }).then(function(resetToken){
+    // Save the reset token created for the user
+
+  }).catch(function(error){
+    util.logAsync("Error in checkQuestionAnswers.\nError Message:" + error.message);
+    return res.status(error.code).json({"message" : error.message});
+  });
+}
+
 
 // Export functions and variables
 module.exports = {
@@ -237,5 +289,6 @@ module.exports = {
   updateUser,
   getUser,
   getResetQuestions,
-  checkUsernameAvailability
+  checkUsernameAvailability,
+  checkQuestionAnswers
 };
