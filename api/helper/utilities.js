@@ -150,16 +150,16 @@ async function getSecurityAnswerQueue(){
   logAsync("Retrieving and returning security answer queue object");
   let secQueue = await FS.readFileAsync(CONSTANTS.SECURITY_ANSWER_QUEUE_FILEPATH);
   // Parse the object received into their set items
-  let setObject = JSON.parse(secQueue, function(key, value){
-    return new Set(value);
-  }
-  return setObject;
+  secQueue = JSON.parse(secQueue);
+  // Retrieve the array object from the security queue and return a set object
+  // from it
+  return {set : new Set(secQueue.set), json : secQueue};
 }
 
 // Serializes a set object into its JSON equivalent
-async function saveSecurityAnswerQueue(obj){
+async function saveSecurityAnswerQueue(secQueueJson){
   logAsync("Saving security answer queue json object");
-  await FS.writeFile(CONSTANTS.SECURITY_ANSWER_QUEUE_FILEPATH, JSON.stringify(obj));
+  await FS.writeFile(CONSTANTS.SECURITY_ANSWER_QUEUE_FILEPATH, JSON.stringify(secQueueJson));
 }
 
 // Asynchronously logs
@@ -196,5 +196,7 @@ module.exports = {
   RequestError,
   generateFutureDate,
   getUserRecommenderFile,
-  saveUserRecommenderFile
+  saveUserRecommenderFile,
+  getSecurityAnswerQueue,
+  saveSecurityAnswerQueue
 }

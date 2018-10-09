@@ -31,13 +31,25 @@ const routing = function routing(express_router){
     USER_MIDDLEWARE.getResetQuestions(req, res);
   });
   // Check the security question answers for the user
-  router.route('/users/reset-check').get(function(req, res){
+  router.route('/users/reset-check').get(async function(req, res){
     // Retrieve the IP address of the request
     let requestIp = req.ip;
     // Check whether the request was already sent by the particular
     // ip address and that a response is still being made out
-    let secQueue = 
-    USER_MIDDLEWARE.checkQuestionAnswers(req, res);
+    let vals = await UTILITIES.getSecurityAnswerQueue();
+    let setObj = vals.set;
+    let setJson = vals.json;
+    if (!setObj.has(requestIp)){
+      UTILITIES.logAsync("Checking security answers for " + requestIp);
+      setObj.add(requestIp);
+      // Save the security answers
+      setJson.set = Array.from(setObj);
+      UTILITIES.saveSecurityAnswerQueue(setJson);
+      USER_MIDDLEWARE.checkQuestionAnswers(req, res);
+    }
+    UTILITIES.logAsync("Security answer check request for ip address" + requestIp +
+			" already beging run");
+    return null;
   });
   //Delete a playlist for the user.
   router.route('/playlist').delete(function(req, res) {
@@ -67,6 +79,11 @@ const routing = function routing(express_router){
   //Delete a song from the specified playlist.
   router.route('/playlistpage').delete(function(req, res) {
     MUSIC_MIDDLEWARE.deleteSongFromPlaylist(req, res);
+  });
+
+  //Gets song information for requested son.
+  router.route('/song').get(function(req, res) {
+    MUSIC_MIDDLEWARE.getSong(req, res);
   });
 
   return router;

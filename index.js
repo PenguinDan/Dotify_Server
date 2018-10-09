@@ -1,6 +1,7 @@
 'use strict'
 
 // Modules
+const UTIL = require('./api/helper/utilities');
 const MONGOOSE = require('mongoose');
 const HTTP = require('http');
 const HTTPS = require('https');
@@ -74,8 +75,14 @@ HTTP.createServer(HTTPAPP).listen(HTTP_PORT);
 
 
 // Setup UDP Sockets
-MUSIC_STREAM_SOCKET.on('message', function(message, rinfo){
+MUSIC_STREAM_SOCKET.on('message', function(msg, rinfo){
+  UTIL.logAsync(`server got: ${msg} from ${rinfo.address}:${rinfo.port}`);
 
+});
+
+MUSIC_STREAM_SOCKET.on('listening', () => {
+  const address = MUSIC_STREAM_SOCKET.address();
+  UTIL.logAsync(`server listening ${address.address}:${address.port}`);
 });
 
 RECOMMENDER_SOCKET.on('message', function(message, rinfo){

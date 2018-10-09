@@ -286,6 +286,7 @@ let checkQuestionAnswers = function(req, res){
 	// Save the json user information
 	util.saveUserDataFile(username, userJson);
 	util.logAsync("User json file saved successfully from Check Question Answers with token");
+        return {json : userJson, resetToken : token};
 	// Send a response of a successfull token creation
 	return res.status(CONSTANTS.ACCEPTED).json({
 	  "message" : "Security questions validated successfully",
@@ -297,9 +298,14 @@ let checkQuestionAnswers = function(req, res){
     } else {
       throw new util.RequestError(CONSTANTS.BAD_REQUEST, "Request does not contain required header information");
     }
-  }).then(function(resetToken){
+  }).then(function(vals){
     // Save the reset token created for the user
-
+    let userJson = vals.json;
+    userJson.resetToken = vals.resetToken;
+    util.saveUserDataFile(userJson.username, userJson);
+    // Delete the user's ip address from the list of addresses waitning to receive their
+    // security token
+    let secAnswerQueue = util.getSecurityAnswerQueue;
   }).catch(function(error){
     util.logAsync("Error in checkQuestionAnswers.\nError Message:" + error.message);
     return res.status(error.code).json({"message" : error.message});

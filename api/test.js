@@ -1,16 +1,10 @@
+'use strict'
 
-let testString = {
-  "array" : []
+function returnTwoVals() {
+  return {one : 1, two: 2};
 }
 
-testString = JSON.stringify(testString);
-testString = JSON.parse(testString);
+let vals = returnTwoVals();
 
-arr = testString.array;
-
-console.log(arr);
-
-arr.push([1,2,3,4,5]);
-arr.push([1,2,3,4,5]);
-
-console.log(arr);
+console.log(vals.one);
+console.log(vals.two);

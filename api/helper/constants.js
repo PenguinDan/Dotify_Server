@@ -28,12 +28,12 @@ module.exports = {
   // Identify server user filepaths and directory
   USER_DATA_DIRECTORY : './api/models/users/',
   SONG_DATA_DIRECTORY : './api/models/songs/songdata',
-  SONG_INFO_DIRECTORY : './api/models/songs/songinfo',	
+  SONG_INFO_DIRECTORY : './api/models/songs/songinfo',
 
   // Identify server configuration filepaths and directories
   CONFIG_FILEPATH : './api/config/config.json',
   SERVER_DATA_FILEPATH : './api/config/server_data.json',
-  SECURITY_ANSWER_QUEUE_FILEPATH : './api/config/security_answer_queue.json';
+  SECURITY_ANSWER_QUEUE_FILEPATH : './api/config/security_answer_queue.json',
 
   // Identify server music filepaths and directory
   SONG_DATA_DIRECTORY : './api/models/songs/'

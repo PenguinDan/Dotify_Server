@@ -376,6 +376,47 @@ let deleteSongFromPlaylist = async function(req, res){
 	}
 }
 
+let getSong = async function(req, res){
+	try{
+		//Setting song id from request.
+		let songId = req.query.songid;
+		//Gets the directory for the song info of given song id.
+		let songInfoDir = songIdInfoDir(songId);
+
+		//Checking if the song id is null;
+		if(!songId){
+			let errorMessage = "Song ID name requested was invalid.";
+			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
+		}
+
+		//Authenticating application.
+		await UTIL.authenticateApp(req)
+			.then(function(result){})
+			.catch(function(error){
+				throw error;
+			});
+
+		//Getting the song info JSON for a song through song id.
+		let songInfoJson = await FS.readFileAsync(songInfoDir)
+		.then(function(result){
+			let songInfoJson = JSON.parse(result);
+			UTIL.logAsync("The song info for song with song id "+ songId + " was retrieved successfully!");
+			return songInfoJson;
+		})
+		.catch(function(err){
+			let errorMessage = "The song info for song with song id " + songId + " could not be retrieved.";
+			throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
+		});
+
+		return res.status(CONSTANTS.OK).json(songInfoJson);
+
+
+	}catch(err){
+		UTIL.logAsync(err.message);
+		res.status(err.code).json({message: err.message});
+	}
+}
+
 
 
 
@@ -387,4 +428,5 @@ module.exports = {
 	userPlaylistDir,
 	addSongToPlaylist,
 	deleteSongFromPlaylist,
+	getSong,
 };
