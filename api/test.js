@@ -1,10 +1,4 @@
 'use strict'
+const UUID = require('uuid/v4');
 
-function returnTwoVals() {
-  return {one : 1, two: 2};
-}
-
-let vals = returnTwoVals();
-
-console.log(vals.one);
-console.log(vals.two);
+console.log(UUID());

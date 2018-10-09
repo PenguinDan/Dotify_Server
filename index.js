@@ -74,21 +74,28 @@ HTTPS.createServer(options, HTTPSAPP).listen(SECURE_PORT);
 HTTP.createServer(HTTPAPP).listen(HTTP_PORT);
 
 
-// Setup UDP Sockets
+// UDP: receives a message with the song id to be sent back as UDP stream.
 MUSIC_STREAM_SOCKET.on('message', async function(msg, rinfo){
   UTIL.logAsync(`server got: ${msg} from ${rinfo.address}:${rinfo.port}`);
-  let songDataBuffer = await MUSIC_STREAM.sendSongData(msg);
-  UTIL.logAsync(songDataBuffer['music']);
-  if(!songDataBuffer.value){
-    return;
-  }
-  MUSIC_STREAM_SOCKET.send(songDataBuffer, 0, songDataBuffer.length, rinfo.port, rinfo.address, function(err, bytes) {
-    if (err){
-      UTIL.logAsync(err);
-      throw err
-    };
-    UTIL.logAsync('UDP song data sent to ' + rinfo.address +':'+ rinfo.port);
-});
+  await MUSIC_STREAM.sendSongData(msg)
+  .then(function(result){
+    UTIL.logAsync(result);
+      if(!result){
+        return;
+      }
+    //UDP: Sends the song buffer for a message to the address that it received the request from.
+    MUSIC_STREAM_SOCKET.send(result, 0, result.length, rinfo.port, rinfo.address, function(err, bytes) {
+      if (err){
+        UTIL.logAsync(err);
+        throw err
+      };
+      UTIL.logAsync('UDP song data sent to ' + rinfo.address +':'+ rinfo.port);
+    });
+  })
+  .catch(function(error){
+    UTIL.logAsync(error);
+    throw error;
+  });
 });
 
 MUSIC_STREAM_SOCKET.on('listening', () => {

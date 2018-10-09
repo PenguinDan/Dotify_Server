@@ -1,6 +1,15 @@
 'use strict'
 
 module.exports = {
+
+  // The unique request codes
+  CREATE_ACCOUNT_REQUEST = 0,
+  UPDATE_USER_PASSWORD_REQUEST = 1,
+  DELETE_PLAYLIST_REQUEST = 2,
+  CREATE_PLAYLIST_REQUEST = 3,
+  ADD_SONG_TO_PLAYLIST_REQUEST = 4,
+  DELETE_SONG_FROM_PLAYLIST_REQUEST = 5,
+
   // Identify Request code constants
   USER_NOT_FOUND_CODE : 901,
   USER_FOUND_CODE : 900,
@@ -34,6 +43,7 @@ module.exports = {
   CONFIG_FILEPATH : './api/config/config.json',
   SERVER_DATA_FILEPATH : './api/config/server_data.json',
   SECURITY_ANSWER_QUEUE_FILEPATH : './api/config/security_answer_queue.json',
+  REQUEST_LOG_FILEPATH : './api/config/request_log.json',
 
   // Identify server music filepaths and directory
   SONG_DATA_DIRECTORY : './api/models/songs/'

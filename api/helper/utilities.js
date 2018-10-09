@@ -5,6 +5,7 @@ const FS = BLUEBIRD.promisifyAll(require('fs'));
 const CONSTANTS = require('./constants');
 const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, label, printf } = format;
+const UUID = require('uuid/v4');
 
 // Initialize Modules
 // Initialize Winston Module
@@ -164,9 +165,8 @@ async function saveSecurityAnswerQueue(secQueueJson){
 }
 
 // Retrieve the JSON file that contains the request logs
-async function getRequestLog(){
-  logAsync("Retrieving request log");
-  let requestLog = await FS.readFileAsync();
+async function addRequestLog(uniqueId, jsonRequest){
+
 }
 
 // Asynchronously logs
