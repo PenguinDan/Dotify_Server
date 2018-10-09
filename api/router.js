@@ -1,5 +1,6 @@
 const USER_MIDDLEWARE = require('./user_middleware');
 const MUSIC_MIDDLEWARE = require('./music_middleware');
+const SEARCH_MIDDLEWARE = require('./search_middleware');
 const UTILITIES = require('./helper/utilities');
 let router;
 
@@ -87,6 +88,11 @@ const routing = function routing(express_router){
   //Gets song information for requested son.
   router.route('/song').get(function(req, res) {
     MUSIC_MIDDLEWARE.getSong(req, res);
+  });
+
+  //Gets list of songs matching the search.
+  router.route('/search').get(function(req, res) {
+    SEARCH_MIDDLEWARE.getSearchResults(req, res);
   });
 
   return router;

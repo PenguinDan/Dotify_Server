@@ -5,7 +5,9 @@ const UTIL = require('./helper/utilities');
 const CONSTANTS = require('./helper/constants');
 const UUID = require('uuid/v4');
 var dateTime = require('node-datetime');
- function userPlaylistDir(username, playlist){
+
+//Returns the users playlist directory.
+function userPlaylistDir(username, playlist){
 	return `${CONSTANTS.USER_DATA_DIRECTORY}${username}/playlists/${playlist}.json`;
 }
 
