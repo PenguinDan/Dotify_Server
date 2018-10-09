@@ -75,11 +75,11 @@ let getSearchResults = async function(req, res){
         }
 
         let returnList = {
-            songs : {
-                
-            }
-        }
+            'songs' : songSearchResults,
+            'artist': artistSearchResults,
 
+        }
+        return res.status(CONSTANTS.OK).json(returnList);
 
 
     }catch(error){
