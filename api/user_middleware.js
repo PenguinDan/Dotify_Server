@@ -39,7 +39,7 @@ let checkUsernameAvailability = async function(req, res){
 let createUser = function(req, res){
   let uniqueId = UUID();
   // Instatiates an authentication promise
-  util.authenticateApp(req).then(async function(result){
+  util.authenticateApp(req).then(function(result){
     util.logAsync("Creating User");
     // Make sure that all of the required fields are
     // in the body
@@ -128,7 +128,6 @@ let createUser = function(req, res){
   }).then(async function(userData){
     // Save the user data file
     await util.saveUserDataFile(userData.username, userData);
-    util.logAsync("User account created successfully");
     // Remove the saved request log
     util.removeRequestLog(uniqueId);
     // Send a response of a successful user creation

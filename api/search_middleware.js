@@ -77,6 +77,10 @@ let getSearchResults = async function(req, res){
             }
         }
 
+        if(!songId){
+            UTIL.logAsync("Song id is null");
+            songId = "9999999";
+        }
         //Parsing artist list file.
         var artistList = artistListFile.toString().split("~");
         var artistSearchResults = [];

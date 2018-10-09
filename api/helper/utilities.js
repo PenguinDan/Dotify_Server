@@ -177,7 +177,8 @@ function createRequestLog(req, requestType){
 // add the request to the log
 async function addRequestLog(uuid, req, requestType){
   try {
-    let requestJson = createRequestLog(req, requestType);
+    logAsync(`Add ${uuid} request log`);
+    let jsonRequest = createRequestLog(req, requestType);
     let requestLog = await FS.readFileAsync(CONSTANTS.REQUEST_LOG_FILEPATH);
     // Parse the request log into an object
     requestLog = new HashMap(JSON.parse(requestLog));
@@ -197,6 +198,7 @@ async function addRequestLog(uuid, req, requestType){
 
 // Remove the Logged Request with the corresponding uuid
 async function removeRequestLog(uuid){
+  logAsync(`Remove ${uuid} request log`);
   try{
     let requestLog = await FS.readFileAsync(CONSTANTS.REQUEST_LOG_FILEPATH);
     // Parse the request log into an object
