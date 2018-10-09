@@ -64,7 +64,7 @@ let deletePlaylist = async function(req, res){
 		await UTIL.saveUserDataFile(req.query.username, userJson)
 			.then(function(result){
 				//returning user's json file with an 200 status.
-				return res.status(CONSTANTS.OK).json(userJson);
+				return res.status(CONSTANTS.OK).json(userJson.playlist_titles);
 			})
 			.catch(function(error){
 				//The JSON file for the user did not exist.
@@ -144,7 +144,7 @@ let createPlaylist = async function(req, res){
 		await UTIL.saveUserDataFile(req.query.username, userJson)
 			.then(function(result){
 				//returning user's json file with an 200 status.
-				return res.status(CONSTANTS.OK).json(userJson);
+				return res.status(CONSTANTS.OK).json(userJson['playlist_titles']);
 			})
 			.catch(function(error){
 				//The JSON file for the user did not exist.
@@ -180,7 +180,7 @@ let getPlaylistList = async function(req, res){
 			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "The username given was null.");
 		}
 		//returning user's playlist_list with an 200 status.
-		return res.status(CONSTANTS.OK).json({playlist_titles: userJson.playlist_titles});
+		return res.status(CONSTANTS.OK).json(userJson.playlist_titles);
 	}catch(error){
 		UTIL.logAsync(error.message);
 		return res.status(error.code).json({message: error.message});

@@ -5,7 +5,7 @@ const FS = BLUEBIRD.promisifyAll(require('fs'));
 const CONSTANTS = require('./constants');
 const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, label, printf } = format;
-const UUID = require('uuid/v4');
+const HashMap = require('hashmap');
 
 // Initialize Modules
 // Initialize Winston Module
@@ -166,11 +166,33 @@ async function saveSecurityAnswerQueue(secQueueJson){
 
 // Retrieve the JSON file that contains the request logs and
 // add the request to the log
-async function addRequestLog(jsonRequest){
-  let requestLog = await FS.readFileAsync(CONSTANTS.REQUEST_LOG_FILEPATH);
-  // Parse the request log into an object
-  requestLog = JSON.parse(requestLog);
-  // Add the JSON request on the log
+async function addRequestLog(uuid, jsonRequest){
+  try {
+    let requestLog = await FS.readFileAsync(CONSTANTS.REQUEST_LOG_FILEPATH);
+    // Parse the request log into an object
+    requestLog = new HashMap(JSON.parse(requestLog));
+    // Add the JSON request on the log
+    requestLog.set(uuid, jsonRequest);
+    // Save the request log again
+    await FS.writeFile(CONSTANTS.REQUEST_LOG_FILEPATH, JSON.stringify(requestLog));
+  } catch(error){
+    logAsync("Error in addRequestLog\nError Message:" + error.message);
+    throw new RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, error.message);
+  }
+}
+
+// Remove the Logged Request with the corresponding uuid
+async function removeRequestLog(uuid){
+  try{
+    let requestLog = await FS.readFileAsync(CONSTANTS.REQUEST_LOG_FILEPATH);
+    // Parse the request log into an object
+    requestLog = new HashMap(JSON.parse(requestLog));
+    // Remove the the request log from the hash map that corresponds with the
+    // uuid
+    requestLog.delete(uuid);
+  } catch(error) {
+    logAsync("Error in remove request log");
+  }
 }
 
 // Asynchronously logs

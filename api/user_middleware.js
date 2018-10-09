@@ -6,6 +6,7 @@ const CONSTANTS = require('./helper/constants');
 const BLUEBIRD = require('bluebird');
 const FS = BLUEBIRD.promisifyAll(require('fs'));
 const { ResetToken } = require('./helper/security');
+const UUID = require('uuid/v4');
 
 // Check whether a username is available
 let checkUsernameAvailability = async function(req, res){
@@ -39,8 +40,7 @@ let createUser = function(req, res){
   // Instatiates an authentication promise
   util.authenticateApp(req).then(function(result){
     util.logAsync("Creating User");
-
-
+    
     // Make sure that all of the required fields are
     // in the body
     if (req.body.username && req.body.password &&
