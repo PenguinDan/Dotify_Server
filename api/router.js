@@ -12,6 +12,7 @@ const routing = function routing(express_router){
   });
   // Create the user
   router.route('/users').post(function (req, res) {
+    
     USER_MIDDLEWARE.createUser(req, res);
   });
   // Update the user password.
@@ -31,25 +32,27 @@ const routing = function routing(express_router){
     USER_MIDDLEWARE.getResetQuestions(req, res);
   });
   // Check the security question answers for the user
-  router.route('/users/reset-check').get(async function(req, res){
+  router.route('/users/reset-check').get(function(req, res){
     // Retrieve the IP address of the request
     let requestIp = req.ip;
     // Check whether the request was already sent by the particular
     // ip address and that a response is still being made out
-    let vals = await UTILITIES.getSecurityAnswerQueue();
-    let setObj = vals.set;
-    let setJson = vals.json;
-    if (!setObj.has(requestIp)){
-      UTILITIES.logAsync("Checking security answers for " + requestIp);
-      setObj.add(requestIp);
-      // Save the security answers
-      setJson.set = Array.from(setObj);
-      UTILITIES.saveSecurityAnswerQueue(setJson);
-      USER_MIDDLEWARE.checkQuestionAnswers(req, res);
-    }
-    UTILITIES.logAsync("Security answer check request for ip address" + requestIp +
-			" already beging run");
-    return null;
+    UTILITIES.getSecurityAnswerQueue().then(async function(vals){
+      let setObj = vals.set;
+      let setJson = vals.json;
+      if (!setObj.has(requestIp)){
+        UTILITIES.logAsync("Checking security answers for " + requestIp);
+        setObj.add(requestIp);
+        // Save the security answers
+        setJson.set = Array.from(setObj);
+        await UTILITIES.saveSecurityAnswerQueue(setJson);
+        USER_MIDDLEWARE.checkQuestionAnswers(req, res);
+      } else {
+        UTILITIES.logAsync("Security answer check request for ip address" + requestIp +
+                        " already beging run");
+      return null;
+      }
+    });
   });
   //Delete a playlist for the user.
   router.route('/playlist').delete(function(req, res) {

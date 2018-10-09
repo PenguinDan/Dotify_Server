@@ -160,6 +160,13 @@ async function getSecurityAnswerQueue(){
 async function saveSecurityAnswerQueue(secQueueJson){
   logAsync("Saving security answer queue json object");
   await FS.writeFile(CONSTANTS.SECURITY_ANSWER_QUEUE_FILEPATH, JSON.stringify(secQueueJson));
+  return true;
+}
+
+// Retrieve the JSON file that contains the request logs
+async function getRequestLog(){
+  logAsync("Retrieving request log");
+  let requestLog = await FS.readFileAsync();
 }
 
 // Asynchronously logs

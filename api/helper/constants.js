@@ -27,7 +27,7 @@ module.exports = {
 
   // Identify server user filepaths and directory
   USER_DATA_DIRECTORY : './api/models/users/',
-  SONG_DATA_DIRECTORY : './api/models/songs/songdata',
+  SONG_MUSIC_DIRECTORY : './api/models/songs/songdata',
   SONG_INFO_DIRECTORY : './api/models/songs/songinfo',
 
   // Identify server configuration filepaths and directories

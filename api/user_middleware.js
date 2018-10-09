@@ -282,30 +282,32 @@ let checkQuestionAnswers = function(req, res){
         let expirationTime = util.generateFutureDate(30);
 	// Create the ResetToken object for the user
 	let token = new ResetToken(securityToken, expirationTime);
-	userJson.resetToken = token;
-	// Save the json user information
-	util.saveUserDataFile(username, userJson);
 	util.logAsync("User json file saved successfully from Check Question Answers with token");
         return {json : userJson, resetToken : token};
-	// Send a response of a successfull token creation
-	return res.status(CONSTANTS.ACCEPTED).json({
-	  "message" : "Security questions validated successfully",
-	  "token" : token.token
-	});
       } else {
 	throw new util.RequestError(CONSTANTS.NOT_ACCEPTABLE, "Security answers not acceptable");
       }
     } else {
       throw new util.RequestError(CONSTANTS.BAD_REQUEST, "Request does not contain required header information");
     }
-  }).then(function(vals){
+  }).then(async function(vals){
     // Save the reset token created for the user
     let userJson = vals.json;
     userJson.resetToken = vals.resetToken;
     util.saveUserDataFile(userJson.username, userJson);
     // Delete the user's ip address from the list of addresses waitning to receive their
     // security token
-    let secAnswerQueue = util.getSecurityAnswerQueue;
+    let secVals = await util.getSecurityAnswerQueue();
+    let setObj = secVals.set;
+    let setJson = secVals.json;
+    setObj.delete(req.ip);
+    setJson.set = Array.from(setObj);
+    await util.saveSecurityAnswerQueue(setJson);
+    // Return a response to the user
+    return res.status(CONSTANTS.ACCEPTED).json({
+      "message" : "Security questions validated successfully",
+      "token" : vals.resetToken.token
+    });
   }).catch(function(error){
     util.logAsync("Error in checkQuestionAnswers.\nError Message:" + error.message);
     return res.status(error.code).json({"message" : error.message});
