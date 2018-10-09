@@ -99,7 +99,9 @@ MUSIC_STREAM_SOCKET.on('message', async function(msg, rinfo){
         return;
       }
       UTIL.logAsync(result.length);
-      const bufferSplit = 10000;
+
+      //Splits the buffer into seperate datagrams to send.
+      const bufferSplit = 1000;
       var list = chunks(new Buffer(result), bufferSplit);
       UTIL.logAsync(list[i]);
       for(var i = 0; i < bufferSplit.length;i++){
@@ -121,7 +123,7 @@ MUSIC_STREAM_SOCKET.on('message', async function(msg, rinfo){
 });
 
 
-
+//The Server socket is listening on specified port.
 MUSIC_STREAM_SOCKET.on('listening', () => {
   const address = MUSIC_STREAM_SOCKET.address();
   UTIL.logAsync(`server listening ${address.address}:${address.port}`);

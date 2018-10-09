@@ -149,6 +149,7 @@ let createUser = function(req, res){
 
 // Updates the user passwords
 let updateUser = function(req, res){
+  let uniqueId = UUID();
   // Instantiates an authentication promise
   util.authenticateApp(req).then(async function(result){
     // Retrieve the username and password from the body
@@ -156,6 +157,13 @@ let updateUser = function(req, res){
     let clientToken = req.body.token;
 
     if (username && req.body.password && clientToken){
+      // Log the request
+      let requestJson = {
+        requestType : CONSTANTS.UPDATE_USER_PASSWORD_REQUEST,
+        appKey : req.get("AppKey"),
+        body : req.body
+      }
+      await util.addRequestLog(uniqueId, requestJson);
       // Open the user file based on their username and check if the reset token matches
       // the one that is currently stored
       let userJson = await util.getUserDataFile(username);
@@ -197,9 +205,12 @@ let updateUser = function(req, res){
     userJson.resetToken = null;
     // Save the user json file
     util.saveUserDataFile(userJson.username, userJson);
+    // Remove the Request log for the current client
+    util.removeRequestLog(uniqueId);
     return res.status(CONSTANTS.ACCEPTED).json({"message" : "Password has been successfully changed"});
   }).catch(function(error){
     util.logAsync("Error in updateUser function.\nError Message:" + error.message);
+    util.removeRequestLog(uniqueId);
     // The client has given an invalid request or we got an error from the server
     return res.status(error.code).json({"message" : error.message});
   });
