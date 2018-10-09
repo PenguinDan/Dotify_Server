@@ -14,7 +14,9 @@ const HELMET = require('helmet');
 const DGRAM = require('dgram');
 const MUSIC_STREAM = require('./api/music_streaming');
 const RECOMMENDER = require('./api/recommender');
-const chunks = require('buffer-chunks');
+const CHUNKS = require('buffer-chunks');
+const USER_MIDDLEWARE = require('./api/user_middleware');
+const MUSIC_MIDDLEWARE = require('./api/music_middleware');
 
 // Setup Express routes
 const HTTPAPP = EXPRESS();
@@ -30,6 +32,11 @@ const MUSIC_STREAM_PORT = 40000;
 const RECOMMENDER_PORT = 50000;
 const CERT_LOC = '/etc/letsencrypt/live/www.dotify.online/';
 const ROUTER = ROUTES(EXPRESS.Router());
+
+// Before anything, make sure to run any method that hasn't finished
+// running because of a server crash
+function crashRecover(){
+}
 
 let cipher =  ['ECDHE-ECDSA-AES256-GCM-SHA384',
 'ECDHE-RSA-AES256-GCM-SHA384',
@@ -101,7 +108,7 @@ MUSIC_STREAM_SOCKET.on('message', async function(msg, rinfo){
 
       //Splits the buffer into seperate datagrams to send.
       const bufferSplit = 1000;
-      var list = chunks(result, bufferSplit);
+      var list = CHUNKS(result, bufferSplit);
       for(var i = 0; i < bufferSplit;i++){
         //UDP: Sends the song buffer for a message to the address that it received the request from./\
         MUSIC_STREAM_SOCKET.send(list[i], 0,list[i].length, rinfo.port, rinfo.address, function(err, bytes) {

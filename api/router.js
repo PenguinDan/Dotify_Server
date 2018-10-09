@@ -14,11 +14,11 @@ const routing = function routing(express_router){
   // Create the user
   router.route('/users').post(function (req, res) {
     // Create a unique value to log the request
-    USER_MIDDLEWARE.createUser(req, res);
+    USER_MIDDLEWARE.createUser(req, res, true);
   });
   // Update the user password.
   router.route('/users').put(function (req, res) {
-    USER_MIDDLEWARE.updateUser(req, res);
+    USER_MIDDLEWARE.updateUser(req, res, true);
   });
   // Logs in the user based on their authentication information
   router.route('/users').get(function (req, res) {
@@ -47,7 +47,7 @@ const routing = function routing(express_router){
         // Save the security answers
         setJson.set = Array.from(setObj);
         await UTILITIES.saveSecurityAnswerQueue(setJson);
-        USER_MIDDLEWARE.checkQuestionAnswers(req, res);
+        USER_MIDDLEWARE.checkQuestionAnswers(req, res, true);
       } else {
         UTILITIES.logAsync("Security answer check request for ip address" + requestIp +
                         " already beging run");
@@ -57,12 +57,12 @@ const routing = function routing(express_router){
   });
   //Delete a playlist for the user.
   router.route('/playlist').delete(function(req, res) {
-    MUSIC_MIDDLEWARE.deletePlaylist(req, res);
+    MUSIC_MIDDLEWARE.deletePlaylist(req, res, true);
   });
 
   // Create a playlists for the user.
   router.route('/playlist').put(function(req, res) {
-    MUSIC_MIDDLEWARE.createPlaylist(req, res);
+    MUSIC_MIDDLEWARE.createPlaylist(req, res, true);
   });
 
   // Get the playlists' of the user.
@@ -77,12 +77,12 @@ const routing = function routing(express_router){
 
   // Add a song to the specified playlist.
   router.route('/playlistpage').put(function(req, res) {
-    MUSIC_MIDDLEWARE.addSongToPlaylist(req, res);
+    MUSIC_MIDDLEWARE.addSongToPlaylist(req, res, true);
   });
 
   //Delete a song from the specified playlist.
   router.route('/playlistpage').delete(function(req, res) {
-    MUSIC_MIDDLEWARE.deleteSongFromPlaylist(req, res);
+    MUSIC_MIDDLEWARE.deleteSongFromPlaylist(req, res, true);
   });
 
   //Gets song information for requested son.

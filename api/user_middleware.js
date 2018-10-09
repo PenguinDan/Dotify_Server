@@ -36,10 +36,13 @@ let checkUsernameAvailability = async function(req, res){
 }
 
 // Creates the user account
-let createUser = function(req, res){
-  let uniqueId = UUID();
+let createUser = function(req, res, isFromClient){
+  let uniqueId = null;
+  if (isFromClient){
+    uniqueId = UUID();
+  }
   // Instatiates an authentication promise
-  util.authenticateApp(req).then(function(result){
+  util.authenticateApp(req).then(async function(result){
     util.logAsync("Creating User");
     // Make sure that all of the required fields are
     // in the body
@@ -47,8 +50,10 @@ let createUser = function(req, res){
       req.body.securityQuestion1 && req.body.securityQuestion2 &&
       req.body.securityAnswer1 && req.body.securityAnswer2){
       util.logAsync("Log the Request for Create User");
-      // Create a unique Id for the request
-      util.addRequestLog(uniqueId, req, CONSTANTS.CREATE_ACCOUNT_REQUEST);
+      if (isFromClient){
+        // Create a unique Id for the request
+        await util.addRequestLog(uniqueId, req, CONSTANTS.CREATE_ACCOUNT_REQUEST);
+      }
       util.logAsync("Checking request body validity");
       // Check whether the username already exists
       let userDirectoryExists = util.userExists(req.body.username);
@@ -128,22 +133,33 @@ let createUser = function(req, res){
   }).then(async function(userData){
     // Save the user data file
     await util.saveUserDataFile(userData.username, userData);
-    // Remove the saved request log
-    util.removeRequestLog(uniqueId);
-    // Send a response of a successful user creation
-    return res.status(CONSTANTS.CREATED).json({"message":"User account created successfuly"});
+    if (isFromClient)(
+      // Remove the saved request log
+      util.removeRequestLog(uniqueId);
+      // Send a response of a successful user creation
+      return res.status(CONSTANTS.CREATED).json({"message":"User account created successfuly"});
+    } else {
+      util.logAsync("Successfully finished logged request from " + userData.username + " in createUser");
+    }
   }).catch(function(error){
     util.logAsync("Error in createUser function.\nError Message:" + error.message);
-    // Delete the Request log
-    util.removeRequestLog(uniqueId);
-    return res.status(error.code).json({message: error.message});
+    if (isFromClient){
+      // Delete the Request log
+      util.removeRequestLog(uniqueId);
+      return res.status(error.code).json({message: error.message});
+    }
   });
 }
 
 
 // Updates the user passwords
-let updateUser = function(req, res){
-  let uniqueId = UUID();
+let updateUser = function(req, res, isFromClient){
+  // Initialize a unique identifier for the current request
+  // only if the request is coming from a client
+  let uniqueId = null;
+  if (!isFromClient) {
+    uniqueId = UUID();
+  }
   // Instantiates an authentication promise
   util.authenticateApp(req).then(async function(result){
     // Retrieve the username and password from the body
@@ -151,13 +167,10 @@ let updateUser = function(req, res){
     let clientToken = req.body.token;
 
     if (username && req.body.password && clientToken){
-      // Log the request
-      let requestJson = {
-        requestType : CONSTANTS.UPDATE_USER_PASSWORD_REQUEST,
-        appKey : req.get("AppKey"),
-        body : req.body
+      if (isFromClient){
+        // Log the request
+        await util.addRequestLog(uniqueId, req, CONSTANTS.UPDATE_USER_PASSWORD_REQUEST);
       }
-      await util.addRequestLog(uniqueId, requestJson);
       // Open the user file based on their username and check if the reset token matches
       // the one that is currently stored
       let userJson = await util.getUserDataFile(username);
@@ -199,14 +212,20 @@ let updateUser = function(req, res){
     userJson.resetToken = null;
     // Save the user json file
     util.saveUserDataFile(userJson.username, userJson);
-    // Remove the Request log for the current client
-    util.removeRequestLog(uniqueId);
-    return res.status(CONSTANTS.ACCEPTED).json({"message" : "Password has been successfully changed"});
+    if (isFromClient){
+      // Remove the Request log for the current client
+      util.removeRequestLog(uniqueId);
+      return res.status(CONSTANTS.ACCEPTED).json({"message" : "Password has been successfully changed"});
+    } else {
+      util.logAsync("Successfully finished logged request for " + userJson.username + " in updatePassword");
+    }
   }).catch(function(error){
     util.logAsync("Error in updateUser function.\nError Message:" + error.message);
-    util.removeRequestLog(uniqueId);
-    // The client has given an invalid request or we got an error from the server
-    return res.status(error.code).json({"message" : error.message});
+    if (isFromClient){
+      util.removeRequestLog(uniqueId);
+      // The client has given an invalid request or we got an error from the server
+      return res.status(error.code).json({"message" : error.message});
+    }
   });
 }
 
