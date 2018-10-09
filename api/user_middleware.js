@@ -48,12 +48,7 @@ let createUser = function(req, res){
       req.body.securityAnswer1 && req.body.securityAnswer2){
       util.logAsync("Log the Request for Create User");
       // Create a unique Id for the request
-      let requestJson = {
-        requestType : CONSTANTS.CREATE_ACCOUNT_REQUEST,
-        appKey : req.get("AppKey"),
-        body : req.body
-      }
-      await util.addRequestLog(uniqueId, requestJson);
+      util.addRequestLog(uniqueId, req, CONSTANTS.CREATE_ACCOUNT_REQUEST);
       util.logAsync("Checking request body validity");
       // Check whether the username already exists
       let userDirectoryExists = util.userExists(req.body.username);

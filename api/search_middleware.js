@@ -13,7 +13,7 @@ function songIdInfoDir(){
 let getSearchResults = async function(req, res){
     try{
         //Setting song id from request.
-		let search = req.query.search;
+		let search = req.query.search.toLowerCase();
 		//Setting directory for song list.
         let songDir = songIdInfoDir() + 'songlist.txt';
         //Setting directory for artist list.
@@ -53,24 +53,45 @@ let getSearchResults = async function(req, res){
 			let errorMessage = "The artist list .txt file could not be retrieved.";
 			throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
         });
-        //Parsing list file.
-        var songList = songListFile.toString().split(",");
+        //Parsing song list file.
+        var songList = songListFile.toString().split("~");
         var songSearchResults = [];
-        UTIL.logAsync(search);
+        var songId;
         //Adding search results for the songs.
         for(var i = 0; i < songList.length; i++){
-            if(songList[i].match(search)){
-                songSearchResults.push(songList[i].toString().split(":")[0]);
+            if(songList[i].toLowerCase().match(search)){
+                //Parsing song name.
+                let songName = songList[i].toString().split(":")[0].replace("\n","");
+
+                //Getting the song id for the songs found.
+                songId = songList[i].toString().split(":")[1];
+                UTIL.logAsync("------SONG ID------");
+                UTIL.logAsync(songId);
+
+                //Pushes the song to the search results.
+                songSearchResults.push(songName);
+                //If the length of results is greater, then 10, stop adding results.
+                if(songSearchResults.length > 10){
+                    break;
+                }
             }
         }
 
-        //Parsing list file.
-        var artistList = artistListFile.toString().split(",");
+        //Parsing artist list file.
+        var artistList = artistListFile.toString().split("~");
         var artistSearchResults = [];
-
+        //Adding search results for the artist.
         for(var i = 0; i < artistList.length; i++){
-            if(artistList[i].match(search)){
-                artistSearchResults.push(artistList[i].split(":")[0]);
+            //Checks if the artist matches any results. 
+            if(artistList[i].toLowerCase().match(search) || artistList[i].match(songId)){
+                //Parses artist name.
+                let artistName = artistList[i].split(":")[0].replace("\n","");
+                //Pushes the results to the artist results.
+                artistSearchResults.push(artistName);
+                //If the length of results is greater, then 10, stop adding results.
+                if(artistSearchResults.length > 10){
+                    break;
+                }
             }
         }
 

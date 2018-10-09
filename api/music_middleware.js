@@ -90,14 +90,11 @@ let deletePlaylist = async function(req, res){
  //Create playlist for the user.
 let createPlaylist = async function(req, res){
 	try{
+		let uniqueId = UUID();
 		let playlistName = req.query.playlist;
 		UTIL.logAsync("Playlist: " +playlistName);
  		//Get the id of the user from req.
-		await UTIL.authenticateApp(req)
-			.then(function(result){})
-			.catch(function(error){
-				throw error;
-			});
+		await UTIL.authenticateApp(req);
 		UTIL.logAsync("Username:" + req.query.username);
 		//Retrieving the userJson for the requesting user.
 		let userJson = await UTIL.getUserDataFile(req.query.username)
@@ -108,11 +105,20 @@ let createPlaylist = async function(req, res){
 				//The JSON file for the user did not exist.
 				throw error;
 			});
-		//Checks if the user json is null.
+		let requestJson = {
+			requestType: CONSTANTS.CREATE_PLAYLIST_REQUEST,
+			appKey: req.get("AppKey"),
+			query: req.query,
+			body: req.body
+		}
+		// Save the request log
+		util.addRequestLog(uniqueId, requestJson);
+
+		// Checks if the user json is null.
 		if(!userJson){
 			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "The username given was null.");
 		}
-		
+
 		//Checking if the playlist request name is null.
 		if(!playlistName){
 			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "The new playlist name was not specified with request.");
@@ -121,7 +127,7 @@ let createPlaylist = async function(req, res){
 			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST,"The playlist for the user already exist.");
 		}
  		let playlistDir = userPlaylistDir(req.query.username, playlistName)
-		
+
 		//Setting the date for when the playlist was created.
 		var dt = dateTime.create();
 		dt.format('m/d/Y');
@@ -148,6 +154,8 @@ let createPlaylist = async function(req, res){
  		//Saving the user.json with the new playlist saved.
 		await UTIL.saveUserDataFile(req.query.username, userJson)
 			.then(function(result){
+				// Remove the request log
+				util.removeRequestLog(uniqueId);
 				//returning user's json file with an 200 status.
 				return res.status(CONSTANTS.OK).json(userJson['playlist_titles']);
 			})
@@ -157,6 +165,7 @@ let createPlaylist = async function(req, res){
 			});
 	}catch(error){
 		UTIL.logAsync(error.message);
+		util.removeRequestLog(uniqueId);
 		return res.status(error.code).json({message: error.message});
 	}
  }

@@ -164,10 +164,20 @@ async function saveSecurityAnswerQueue(secQueueJson){
   return true;
 }
 
+function createRequestLog(req, requestType){
+  return {
+    requestType : requestType,
+    appKey : req.get("AppKey"),
+    query : req.query,
+    body : req.body
+  };
+}
+
 // Retrieve the JSON file that contains the request logs and
 // add the request to the log
-async function addRequestLog(uuid, jsonRequest){
+async function addRequestLog(uuid, req, requestType){
   try {
+    let requestJson = createRequestLog(req, requestType);
     let requestLog = await FS.readFileAsync(CONSTANTS.REQUEST_LOG_FILEPATH);
     // Parse the request log into an object
     requestLog = new HashMap(JSON.parse(requestLog));
