@@ -4,9 +4,18 @@ const FS = require('fs');
 const UTIL = require('./helper/utilities');
 const CONSTANTS = require('./helper/constants');
 var dateTime = require('node-datetime');
+const Lame = require("node-lame").Lame;
+
 
 function songIdDataDir(songId){
-	return `${CONSTANTS.SONG_MUSIC_DIRECTORY}/${songId}.json`
+	return `${CONSTANTS.SONG_DATA_DIRECTORY}${songId}.mp3`
+}
+//Returns Lame object for converting mp3 to buffer.
+async function getSong(songId){
+    const decoder = new Lame({
+        "output": "buffer"
+    }).setFile(songId);
+    return decoder;
 }
 
 //Returns the song data for the give song id.
@@ -23,7 +32,7 @@ let sendSongData = async function(msg){
         }
 
         //Getting the song data JSON for the song.
-        let songDataJson = await FS.readFileAsync(songDataDir)
+        /*let songDataJson = await FS.readFileAsync(songDataDir)
 		.then(function(result){
 			let songDataJson = JSON.parse(result);
             UTIL.logAsync("The song data json for song with song id "+ songId + " was retrieved successfully!");
@@ -32,8 +41,29 @@ let sendSongData = async function(msg){
 		.catch(function(err){
 			let errorMessage = "The song data json for song with song id " + songId + " could not be retrieved.";
 			throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
-		});
-		return songDataJson;
+		});*/
+		let decoder = await getSong(songDataDir)
+        .then(function(result){
+            return result;
+        })
+        .catch(function(error){
+            UTIL.logAsync("Error in constructing LAME object for song decoder.");
+            UTIL.logAsync(error);
+        });
+    
+
+    	let songBuffer = await decoder.decode()
+        .then(function(result){
+            // Decoding finished
+            const buffer = decoder.getBuffer();
+            console.log("Song decoding to buffer complete.");
+            return buffer;
+        })
+        .catch(function(error){
+            // Something went wrong
+            throw error;
+        });
+		return songBuffer;
     }catch(error){
         UTIL.logAsync(error.message);
         return null;

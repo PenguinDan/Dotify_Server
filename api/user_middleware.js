@@ -37,15 +37,23 @@ let checkUsernameAvailability = async function(req, res){
 
 // Creates the user account
 let createUser = function(req, res){
+  let uniqueId = UUID();
   // Instatiates an authentication promise
-  util.authenticateApp(req).then(function(result){
+  util.authenticateApp(req).then(async function(result){
     util.logAsync("Creating User");
-    
     // Make sure that all of the required fields are
     // in the body
     if (req.body.username && req.body.password &&
       req.body.securityQuestion1 && req.body.securityQuestion2 &&
       req.body.securityAnswer1 && req.body.securityAnswer2){
+      util.logAsync("Log the Request for Create User");
+      // Create a unique Id for the request
+      let requestJson = {
+        requestType : CONSTANTS.CREATE_ACCOUNT_REQUEST,
+        appKey : req.get("AppKey"),
+        body : req.body
+      }
+      await util.addRequestLog(uniqueId, requestJson);
       util.logAsync("Checking request body validity");
       // Check whether the username already exists
       let userDirectoryExists = util.userExists(req.body.username);
@@ -121,16 +129,19 @@ let createUser = function(req, res){
         throw new util.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
       }
     });
-
     return userData;
   }).then(async function(userData){
     // Save the user data file
     await util.saveUserDataFile(userData.username, userData);
     util.logAsync("User account created successfully");
+    // Remove the saved request log
+    util.removeRequestLog(uniqueId);
     // Send a response of a successful user creation
     return res.status(CONSTANTS.CREATED).json({"message":"User account created successfuly"});
   }).catch(function(error){
     util.logAsync("Error in createUser function.\nError Message:" + error.message);
+    // Delete the Request log
+    util.removeRequestLog(uniqueId);
     return res.status(error.code).json({message: error.message});
   });
 }

@@ -1,6 +1,7 @@
 'use strict'
 
 // Modules
+const LAME = require("node-lame").Lame;
 const UTIL = require('./api/helper/utilities');
 const MONGOOSE = require('mongoose');
 const HTTP = require('http');
@@ -13,7 +14,7 @@ const HELMET = require('helmet');
 const DGRAM = require('dgram');
 const MUSIC_STREAM = require('./api/music_streaming');
 const RECOMMENDER = require('./api/recommender');
-
+const chunks = require('buffer-chunks');
 
 // Setup Express routes
 const HTTPAPP = EXPRESS();
@@ -77,13 +78,10 @@ HTTP.createServer(HTTPAPP).listen(HTTP_PORT);
 // UDP: receives a message with the song id to be sent back as UDP stream.
 MUSIC_STREAM_SOCKET.on('message', async function(msg, rinfo){
   UTIL.logAsync(`server got: ${msg} from ${rinfo.address}:${rinfo.port}`);
-  MUSIC_STREAM.sendSongData(msg)
-  .then(function(result){
-      if(!result){
-        return;
-      }
+  if(msg == "0001"){
+    var result = Buffer.from("REPLY");
       //UDP: Sends the song buffer for a message to the address that it received the request from./\
-      MUSIC_STREAM_SOCKET.send(result, 0, result.length, rinfo.port, '127.0.0.1', function(err, bytes) {
+      MUSIC_STREAM_SOCKET.send(result, 0, result.length, rinfo.port, rinfo.address, function(err, bytes) {
         if (err){
           UTIL.logAsync('Error attempting to send song data steam.\n' + result.length);
           UTIL.logAsync(err);
@@ -91,6 +89,30 @@ MUSIC_STREAM_SOCKET.on('message', async function(msg, rinfo){
         };
         UTIL.logAsync('UDP song data sent to ' + rinfo.address +':'+ rinfo.port);
       });
+      return;
+  }
+  //FOR TESTING CONNECTION _ DELETE AFTER TESTING.
+  MUSIC_STREAM.sendSongData(msg)
+  .then(function(result){
+      if(!result){
+        UTIL.logAsync("The song buffer was null.");
+        return;
+      }
+      UTIL.logAsync(result.length);
+      const bufferSplit = 10000;
+      var list = chunks(new Buffer(result), bufferSplit);
+      UTIL.logAsync(list[i]);
+      for(var i = 0; i < bufferSplit.length;i++){
+        //UDP: Sends the song buffer for a message to the address that it received the request from./\
+        MUSIC_STREAM_SOCKET.send(list[i], 0,list[i].length, rinfo.port, rinfo.address, function(err, bytes) {
+          if (err){
+            UTIL.logAsync('Error attempting to send song data steam.\n' + result.length);
+            UTIL.logAsync(err);
+            throw err
+          };
+          UTIL.logAsync('UDP song data sent to ' + rinfo.address +':'+ rinfo.port);
+        });
+      }
   })
   .catch(function(error){
     UTIL.logAsync(error);

@@ -13,7 +13,7 @@ const routing = function routing(express_router){
   // Create the user
   router.route('/users').post(function (req, res) {
     // Create a unique value to log the request
-    USER_MIDDLEWARE.createUser(req, res, UUID());
+    USER_MIDDLEWARE.createUser(req, res);
   });
   // Update the user password.
   router.route('/users').put(function (req, res) {

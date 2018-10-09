@@ -174,7 +174,11 @@ async function addRequestLog(uuid, jsonRequest){
     // Add the JSON request on the log
     requestLog.set(uuid, jsonRequest);
     // Save the request log again
-    await FS.writeFile(CONSTANTS.REQUEST_LOG_FILEPATH, JSON.stringify(requestLog));
+    await FS.writeFile(CONSTANTS.REQUEST_LOG_FILEPATH, JSON.stringify(requestLog), (error) => {
+      if (error) {
+        throw error;
+      }
+    });
   } catch(error){
     logAsync("Error in addRequestLog\nError Message:" + error.message);
     throw new RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, error.message);
@@ -190,6 +194,12 @@ async function removeRequestLog(uuid){
     // Remove the the request log from the hash map that corresponds with the
     // uuid
     requestLog.delete(uuid);
+    // Save the newly removed request log
+    await FS.writeFile(CONSTANTS.REQUEST_LOG_FILEPATH, JSON.stringify(requestLog), (error) => {
+      if (error) {
+        throw error;
+      }
+    });
   } catch(error) {
     logAsync("Error in remove request log");
   }
@@ -231,5 +241,7 @@ module.exports = {
   getUserRecommenderFile,
   saveUserRecommenderFile,
   getSecurityAnswerQueue,
-  saveSecurityAnswerQueue
+  saveSecurityAnswerQueue,
+  addRequestLog,
+  removeRequestLog
 }
