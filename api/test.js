@@ -1,4 +1,12 @@
 'use strict'
-const UUID = require('uuid/v4');
+const HashMap = require('hashmap');
 
-console.log(UUID());
+let testMap = new HashMap();
+
+testMap.set("hello", "world");
+
+let stringMap = JSON.stringify(testMap);
+
+let newTestMap = new HashMap(JSON.parse(stringMap));
+
+console.log(newTestMap);

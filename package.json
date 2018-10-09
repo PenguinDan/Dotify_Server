@@ -29,6 +29,7 @@
     "dgram": "^1.0.1",
     "express": "^4.16.3",
     "fluent-ffmpeg": "^2.1.2",
+    "hashmap": "^2.3.0",
     "helmet": "^3.13.0",
     "jpeg-js": "^0.3.4",
     "jsonwebtoken": "^8.3.0",

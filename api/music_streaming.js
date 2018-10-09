@@ -27,7 +27,6 @@ let sendSongData = async function(msg){
 		.then(function(result){
 			let songDataJson = JSON.parse(result);
             UTIL.logAsync("The song data json for song with song id "+ songId + " was retrieved successfully!");
-            UTIL.logAsync(JSON.stringify(songDataJson));
 			return JSON.stringify(songDataJson['music']);
 		})
 		.catch(function(err){

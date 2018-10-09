@@ -164,9 +164,13 @@ async function saveSecurityAnswerQueue(secQueueJson){
   return true;
 }
 
-// Retrieve the JSON file that contains the request logs
-async function addRequestLog(uniqueId, jsonRequest){
-
+// Retrieve the JSON file that contains the request logs and
+// add the request to the log
+async function addRequestLog(jsonRequest){
+  let requestLog = await FS.readFileAsync(CONSTANTS.REQUEST_LOG_FILEPATH);
+  // Parse the request log into an object
+  requestLog = JSON.parse(requestLog);
+  // Add the JSON request on the log
 }
 
 // Asynchronously logs

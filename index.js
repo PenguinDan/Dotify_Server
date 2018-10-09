@@ -79,13 +79,13 @@ MUSIC_STREAM_SOCKET.on('message', async function(msg, rinfo){
   UTIL.logAsync(`server got: ${msg} from ${rinfo.address}:${rinfo.port}`);
   await MUSIC_STREAM.sendSongData(msg)
   .then(function(result){
-    UTIL.logAsync(result);
       if(!result){
         return;
       }
     //UDP: Sends the song buffer for a message to the address that it received the request from.
     MUSIC_STREAM_SOCKET.send(result, 0, result.length, rinfo.port, rinfo.address, function(err, bytes) {
       if (err){
+        UTIL.logAsync("Error attempting to send song data steam.")
         UTIL.logAsync(err);
         throw err
       };
