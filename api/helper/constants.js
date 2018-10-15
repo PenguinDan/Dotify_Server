@@ -38,6 +38,7 @@ module.exports = {
   USER_DATA_DIRECTORY : './api/models/users/',
   SONG_MUSIC_DIRECTORY : './api/models/songs/songdata',
   SONG_INFO_DIRECTORY : './api/models/songs/songinfo',
+  ARTIST_INFO_DIRECTORY: '.api/models/songs/artistlist.txt',
 
   // Identify server configuration filepaths and directories
   CONFIG_FILEPATH : './api/config/config.json',

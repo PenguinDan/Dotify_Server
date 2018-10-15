@@ -3,18 +3,21 @@
 // Modules
 const LAME = require("node-lame").Lame;
 const UTIL = require('./api/helper/utilities');
+const CONSTANTS = require('./api/helper/constants');
 const MONGOOSE = require('mongoose');
 const HTTP = require('http');
 const HTTPS = require('https');
 const EXPRESS = require('express');
 const ROUTES = require('./api/router');
 const BODY_PARSER = require('body-parser');
-const FS = require('fs');
+const BLUEBIRD = require('bluebird');
+const FS = BLUEBIRD.promisifyAll(require('fs'));
 const HELMET = require('helmet');
 const DGRAM = require('dgram');
 const MUSIC_STREAM = require('./api/music_streaming');
 const RECOMMENDER = require('./api/recommender');
 const CHUNKS = require('buffer-chunks');
+const HASHMAP = require('hashmap');
 const USER_MIDDLEWARE = require('./api/user_middleware');
 const MUSIC_MIDDLEWARE = require('./api/music_middleware');
 
@@ -35,7 +38,49 @@ const ROUTER = ROUTES(EXPRESS.Router());
 
 // Before anything, make sure to run any method that hasn't finished
 // running because of a server crash
-function crashRecover(){
+async function crashRecover(){
+  // Open the request logs json file
+  let requestLogs = await FS.readFileAsync(CONSTANTS.REQUEST_LOG_FILEPATH);
+  // Turn the request log into a hash map object
+  requestLog = new HASHMAP(JSON.parse(requestLog));
+  // Retrieve all of the values from the hashmap
+  let uuidKeys = requestLog.keys();
+  // Do each request
+  for (let uuid of uuidKeys){
+    request = requestLog.get(uuid);
+    // Retrieve the request type of the logged request
+    let requestType = request.requestType;
+    // Depending on the request type, send the request the the appropriate
+    // location
+    switch(requestType) {
+      case CONSTANTS.CREATE_ACCOUNT_REQUEST:{
+        USER_MIDDLEWARE.createUser(request, null);
+      }
+      break;
+      case COSNTANTS.UPDATE_USER_PASSWORD_REQUEST:{
+        USER_MIDDLEWARE.updateUser(request, null);
+      }
+      break;
+      case CONSTANTS.DELETE_PLAYLIST_REQUEST:{
+        MUSIC_MIDDLEWARE.deletePlaylist(request, null);
+      }
+      break;
+      case CONSTANTS.CREATE_PLAYLIST_REQUEST:{
+        MUSIC_MIDDLEWARE.createPlaylist(request, null);
+      }
+      break;
+      case ADD_SONG_TO_PLAYLIST_REQUEST:{
+        MUSIC_MIDDLEWARE.addSongToPlaylist(request, null);
+      }
+      break;
+      case DELETE_SONG_FROM_PLAYSLIST_REQUEST:{
+        MUSIC_MIDDLEWARE.deleteSongFromPlaylist(request, null);
+      }
+      break;
+    }
+  // Remove all of the uuid values from the logged hashmap
+  UTIL.removeRequestLog(...uuidKeys);
+  }
 }
 
 let cipher =  ['ECDHE-ECDSA-AES256-GCM-SHA384',

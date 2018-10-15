@@ -197,15 +197,17 @@ async function addRequestLog(uuid, req, requestType){
 }
 
 // Remove the Logged Request with the corresponding uuid
-async function removeRequestLog(uuid){
-  logAsync(`Remove ${uuid} request log`);
+async function removeRequestLog(...uuidList){
   try{
     let requestLog = await FS.readFileAsync(CONSTANTS.REQUEST_LOG_FILEPATH);
     // Parse the request log into an object
     requestLog = new HashMap(JSON.parse(requestLog));
-    // Remove the the request log from the hash map that corresponds with the
+    // For each uuid in uuidList, remove the the request log from the hash map that corresponds with the
     // uuid
-    requestLog.delete(uuid);
+    for (let uuid of uuidList){
+      logAsync(`Removing ${uuid} from the request log`);
+      requestLog.delete(uuid);
+    }
     // Save the newly removed request log
     await FS.writeFile(CONSTANTS.REQUEST_LOG_FILEPATH, JSON.stringify(requestLog), (error) => {
       if (error) {

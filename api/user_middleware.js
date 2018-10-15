@@ -36,10 +36,9 @@ let checkUsernameAvailability = async function(req, res){
 }
 
 // Creates the user account
-let createUser = function(req, res, isFromClient){
-  let uniqueId = null;
+let createUser = function(req, res, isFromClient = false){
   if (isFromClient){
-    uniqueId = UUID();
+    var uniqueId = UUID();
   }
   // Instatiates an authentication promise
   util.authenticateApp(req).then(async function(result){
@@ -85,9 +84,10 @@ let createUser = function(req, res, isFromClient){
       "securityQuestion2" : req.body.securityQuestion2,
       "securityAnswer2" : secAnswer2Hash,
       "resetToken" : null,
-      "playlist_titles": []
+      "playlist_titles": [],
+      "userQuote" : "",
+      "imageBytes" : []
     };
-
     return userData;
   }).then(async function(userData){
     // Create user directory
@@ -130,10 +130,10 @@ let createUser = function(req, res, isFromClient){
       }
     });
     return userData;
-  }).then(async function(userData){
+  }).then(function(userData){
     // Save the user data file
-    await util.saveUserDataFile(userData.username, userData);
-    if (isFromClient)(
+    util.saveUserDataFile(userData.username, userData);
+    if (isFromClient){
       // Remove the saved request log
       util.removeRequestLog(uniqueId);
       // Send a response of a successful user creation
@@ -153,12 +153,11 @@ let createUser = function(req, res, isFromClient){
 
 
 // Updates the user passwords
-let updateUser = function(req, res, isFromClient){
+let updateUser = function(req, res, isFromClient = false){
   // Initialize a unique identifier for the current request
   // only if the request is coming from a client
-  let uniqueId = null;
   if (!isFromClient) {
-    uniqueId = UUID();
+    var uniqueId = UUID();
   }
   // Instantiates an authentication promise
   util.authenticateApp(req).then(async function(result){
@@ -250,7 +249,11 @@ let getUser = async function(req, res){
       if (matches){
         util.logAsync("Password match");
         // The password match, return a successful match
-        return res.status(CONSTANTS.ACCEPTED).json({message : "Passwords match"});
+        return res.status(CONSTANTS.ACCEPTED).json({
+	  username : userJson.username,
+	  userQuote: userJson.userQuote,
+	  profileImage: userJson.imageBytes
+	  });
       } else {
         util.logAsync("Passwords do not match");
         throw new util.RequestError(CONSTANTS.UNAUTHORIZED, "Invalid password and username combination.");
@@ -350,6 +353,11 @@ let checkQuestionAnswers = function(req, res){
 }
 
 
+let saveUserProfileImage = function(req, res, isFromClient) {
+  if (isFromClient){
+    var uniqueId = UUID();
+  }
+}
 // Export functions and variables
 module.exports = {
   createUser,
@@ -357,5 +365,6 @@ module.exports = {
   getUser,
   getResetQuestions,
   checkUsernameAvailability,
-  checkQuestionAnswers
+  checkQuestionAnswers,
+  saveUserProfileImage
 };

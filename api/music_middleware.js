@@ -1,4 +1,4 @@
-'use strict'
+ 'use strict'
 //Importing modules
 const FS = require('fs');
 const UTIL = require('./helper/utilities');
@@ -16,9 +16,11 @@ function songIdInfoDir(songId){
 	return `${CONSTANTS.SONG_INFO_DIRECTORY}/${songId}.json`
 }
  //Delete playlist for the user.
-let deletePlaylist = async function(req, res){
+let deletePlaylist = async function(req, res, isFromClient = false){
 	// Create a unique identifier for the current request
-	let uniqueId = UUID();
+	if (isFromClient){
+		var uniqueId = UUID();
+	}
 	try{
 		let playlistName = req.query.playlist;
 		//Get the id of the user from req.
@@ -27,8 +29,10 @@ let deletePlaylist = async function(req, res){
 			.catch(function(error){
 				throw error;
 			});
-                // Create Request Log for the current request
-                await UTIL.addRequestLog(uniqueId, req, CONSTANTS.DELETE_PLAYLIST_REQUEST);
+		if (isFromClient){
+                	// Create Request Log for the current request
+                	await UTIL.addRequestLog(uniqueId, req, CONSTANTS.DELETE_PLAYLIST_REQUEST);
+		}
 
 		//Retrieving the userJson for the requesting user.
 		let userJson = await UTIL.getUserDataFile(req.query.username)
@@ -68,10 +72,14 @@ let deletePlaylist = async function(req, res){
  		//Saving the user.json with the new playlist saved.
 		await UTIL.saveUserDataFile(req.query.username, userJson)
 			.then(function(result){
-				// Remove request log
-				UTIL.removeRequestLog(uniqueId);
-				//returning user's json file with an 200 status.
-				return res.status(CONSTANTS.OK).json(userJson.playlist_titles);
+				if (isFromClient){
+					// Remove request log
+					UTIL.removeRequestLog(uniqueId);
+					//returning user's json file with an 200 status.
+					return res.status(CONSTANTS.OK).json(userJson.playlist_titles);
+				} else {
+					UTIL.logAsync("Successfully finished logged request for" + req.query.username + " in deletePlaylist");
+				}
 			})
 			.catch(function(error){
 				//The JSON file for the user did not exist.
@@ -80,22 +88,28 @@ let deletePlaylist = async function(req, res){
 	}catch(error){
 		//Logging error and returning to user.
 		UTIL.logAsync(error.message);
-		// Remove request log
-		UTIL.removeRequestLog(uniqueid);
-		return res.status(error.code).json({message: error.message});
+		if (isFromClient){
+			// Remove request log
+			UTIL.removeRequestLog(uniqueid);
+			return res.status(error.code).json({message: error.message});
+		}
 	}
  }
  //Create playlist for the user.
-let createPlaylist = async function(req, res){
+let createPlaylist = async function(req, res, isFromClient = false){
 	// Create a unique identifier for the current request
-	let uninqueId = UUID();
+	if (isFromClient){
+		var uniqueId = UUID();
+	}
 	try{
 		let playlistName = req.query.playlist;
 		UTIL.logAsync("Playlist: " +playlistName);
  		//Get the id of the user from req.
 		await UTIL.authenticateApp(req);
-		// Log the request
-		await UTIL.addRequestLog(uniqueId, req, CONSTANTS.CREATE_PLAYLIST_REQUEST);
+		if (isFromClient){
+			// Log the request
+			await UTIL.addRequestLog(uniqueId, req, CONSTANTS.CREATE_PLAYLIST_REQUEST);
+		}
 		UTIL.logAsync("Username:" + req.query.username);
 		//Retrieving the userJson for the requesting user.
 		let userJson = await UTIL.getUserDataFile(req.query.username)
@@ -147,10 +161,14 @@ let createPlaylist = async function(req, res){
  		//Saving the user.json with the new playlist saved.
 		await UTIL.saveUserDataFile(req.query.username, userJson)
 			.then(function(result){
-				// Remove the request log
-				UTIL.removeRequestLog(uniqueId);
-				//returning user's json file with an 200 status.
-				return res.status(CONSTANTS.OK).json(userJson['playlist_titles']);
+				if (isFromClient){
+					// Remove the request log
+					UTIL.removeRequestLog(uniqueId);
+					//returning user's json file with an 200 status.
+					return res.status(CONSTANTS.OK).json(userJson['playlist_titles']);
+				} else {
+					UTIL.logAsync("Successfully finished logged request for " + req.query.username + " in create playlist");
+				}
 			})
 			.catch(function(error){
 				//The JSON file for the user did not exist.
@@ -158,9 +176,11 @@ let createPlaylist = async function(req, res){
 			});
 	}catch(error){
 		UTIL.logAsync(error.message);
-		// Remove the saved request log
-		UTIL.removeRequestLog(uniqueId);
-		return res.status(error.code).json({message: error.message});
+		if (isFromClient){
+			// Remove the saved request log
+			UTIL.removeRequestLog(uniqueId);
+			return res.status(error.code).json({message: error.message});
+		}
 	}
  }
  //get a list of playlist from user.
@@ -226,13 +246,15 @@ let getPlaylist = async function(req, res){
 		res.status(err.code).json({message: err.message});
 	}
 }
- let addSongToPlaylist = async function(req, res){
+ let addSongToPlaylist = async function(req, res, isFromClient = false){
 	let playlistName =  req.query.playlist;
 	let songId = req.query.songid;
 	let playlistDir = userPlaylistDir(req.query.username, playlistName)
 	let songInfoDir = songIdInfoDir(songId);
-	// Create a unique identifier for the current request
-	let uniqueId = UUID();
+	if (isFromClient) {
+		// Create a unique identifier for the current request
+		var uniqueId = UUID();
+	}
 	try{
 		//Checking if the playlist name is null.
 		if(!playlistName){
@@ -250,8 +272,10 @@ let getPlaylist = async function(req, res){
 			.catch(function(error){
 				throw error;
 			});
-		// Save the request log
-		await UTIL.addRequestLog(uniqueId, req, CONSTANTS.ADD_SONG_TO_PLAYLIST_REQUEST);
+		if (isFromClient) {
+			// Save the request log
+			await UTIL.addRequestLog(uniqueId, req, CONSTANTS.ADD_SONG_TO_PLAYLIST_REQUEST);
+		}
  		//Reading the playlist JSON through the playlist.
 		let playlistJson = await FS.readFileAsync(playlistDir)
 			.then(function(result){
@@ -294,24 +318,33 @@ let getPlaylist = async function(req, res){
 				throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
 			}
 			UTIL.logAsync("Playlist file save request for " + playlistName + " was a success!");
-			//Remove the saved request log
-			UTIL.removeRequestLog(uniqueId);
-			return res.status(CONSTANTS.OK).json(playlistJson);
-			});
+			if (isFromClient){
+				//Remove the saved request log
+				UTIL.removeRequestLog(uniqueId);
+				return res.status(CONSTANTS.OK).json(playlistJson);
+			} else {
+				UTIL.logAsync("Successfully finsihed logged request for " + req.query.username + " in addToPlaylist");
+			}
+		});
 	}catch(err){
 		UTIL.logAsync(err.message);
-		// Remove the saved request log
-		UTIL.removeRequestLog(uniqueId);
-		res.status(err.code).json({message: err.message});
+		if (isFromClient){
+			// Remove the saved request log
+			UTIL.removeRequestLog(uniqueId);
+			res.status(err.code).json({message: err.message});
+		}
 	}
 }
+
 //Deleting the song from the playlist json file.
- let deleteSongFromPlaylist = async function(req, res){
+ let deleteSongFromPlaylist = async function(req, res, isFromClient = false){
 	let playlistName =  req.query.playlist;
 	let songId = req.query.songid;
 	let playlistDir = userPlaylistDir(req.query.username, playlistName);
-	// Create a unique identifier for the current request
-	let uniqueId = UUID();
+	if (isFromClient){
+		// Create a unique identifier for the current request
+		var uniqueId = UUID();
+	}
 	try{
 		//Checking if the playlist name is null.
 		if(!playlistName){
@@ -329,7 +362,9 @@ let getPlaylist = async function(req, res){
 			.catch(function(error){
 				throw error;
 			});
-		await UTIL.addRequestLog(uniqueId, req, COSNTANTS.DELETE_SONG_FROM_PLAYLIST_REQUEST);
+		if (isFromClient) {
+			await UTIL.addRequestLog(uniqueId, req, COSNTANTS.DELETE_SONG_FROM_PLAYLIST_REQUEST);
+		}
  		//Reading the playlist JSON through the playlist.
 		let playlistJson = await FS.readFileAsync(playlistDir)
 			.then(function(result){
@@ -341,7 +376,7 @@ let getPlaylist = async function(req, res){
 				let errorMessage = "Json file for " + playlistName + " could not be retrieved.";
 				throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
 			});
-		
+
  		let inPlaylist = false;
 		//Deleting the playlist from the user json.
 		for(var i = 0; i < playlistJson['songs'].length; i++){
@@ -366,15 +401,21 @@ let getPlaylist = async function(req, res){
 				throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
 			}
 			UTIL.logAsync("Playlist file save request for " + playlistName + " was a success!");
-			// Remove request log
-			UTIL.removeRequestLog(uniqueId);
-			return res.status(CONSTANTS.OK).json(playlistJson);
+			if (isFromClient) {
+				// Remove request log
+				UTIL.removeRequestLog(uniqueId);
+				return res.status(CONSTANTS.OK).json(playlistJson);
+			} else {
+				UTIL.logAsync("Successfully finished log request for " + req.query.username + " in detelePlaylist");
+			}
 			});
 	}catch(err){
 		UTIL.logAsync(err.message);
-		// Remove request log
-		UTIL.removeRequestLog(uniqueId);
-		res.status(err.code).json({message: err.message});
+		if (isFromClient){
+			// Remove request log
+			UTIL.removeRequestLog(uniqueId);
+			res.status(err.code).json({message: err.message});
+		}
 	}
 }
 //Gets requested song information.
@@ -397,19 +438,121 @@ let getPlaylist = async function(req, res){
 			});
  		//Getting the song info JSON for a song through song id.
 		let songInfoJson = await FS.readFileAsync(songInfoDir)
-		.then(function(result){
-			let songInfoJson = JSON.parse(result);
-			UTIL.logAsync("The song info for song with song id "+ songId + " was retrieved successfully!");
-			return songInfoJson;
-		})
-		.catch(function(err){
-			let errorMessage = "The song info for song with song id " + songId + " could not be retrieved.";
-			throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
-		});
+			.then(function(result){
+				let songInfoJson = JSON.parse(result);
+				UTIL.logAsync("The song info for song with song id "+ songId + " was retrieved successfully!");
+				return songInfoJson;
+			})
+			.catch(function(err){
+				let errorMessage = "The song info for song with song id " + songId + " could not be retrieved.";
+				throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
+			});
  		return res.status(CONSTANTS.OK).json(songInfoJson);
  	}catch(err){
 		UTIL.logAsync(err.message);
 		res.status(err.code).json({message: err.message});
+	}
+}
+
+
+
+//Deleting the song from the artist json file.
+let getArtist = async function(req, res, isFromClient = false){
+	let artistName =  req.query.artist;
+	let artistDir = `${CONSTANTS.SONG_DATA_DIRECTORY}` + 'artistlist.txt';
+	if (isFromClient){
+		// Create a unique identifier for the current request
+		var uniqueId = UUID();
+	}
+	try{
+		//Checking if the artist name is null.
+		if(!artistName){
+			UTIL.logAsync("Artist name requested was invalid.")
+			return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Artist name requested was invalid"});
+		}
+ 		//Authenticating application.
+		await UTIL.authenticateApp(req)
+			.then(function(result){})
+			.catch(function(error){
+				throw error;
+			});
+		if (isFromClient) {
+			await UTIL.addRequestLog(uniqueId, req, COSNTANTS.DELETE_SONG_FROM_PLAYLIST_REQUEST);
+		}
+
+
+		//Getting the artist list text file for the search results.
+		let artistListFile = await FS.readFileAsync(artistDir)
+		.then(function(result){
+			UTIL.logAsync("The artist list .txt file was retrieved successfully!");
+			return result;
+		})
+		.catch(function(err){
+			let errorMessage = "The artist list .txt file could not be retrieved.";
+			throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
+		}); 
+		
+		
+		//Parsing artist list file.
+        var artistList = artistListFile.toString().split("~");
+        var artistSongs = [];
+        //Adding search results for the artist.
+        for(var i = 0; i < artistList.length; i++){
+			//Checks if the artist matches any results. 
+            if(artistList[i].toLowerCase().match(artistName.toLowerCase())){
+				//Getting song id's from the artist.
+				var temp = artistList[i].split(":")[1];
+				//Getting list of the id's
+				var iter = temp.split(";")
+				for(var l = 0; l < iter.length;l++){
+					//Pushes the results to the artist results.
+					artistSongs.push(iter[l]);
+				}
+				break;
+            }
+		}
+		//If there are no results
+		if(!artistSongs[0]){
+			let errorMessage = "There are no results with artist name";
+			throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
+		}
+		
+		var listOfSongs = []
+		UTIL.logAsync(artistSongs);
+		for(var i = 0; i < artistSongs.length; i++){
+			//Getting the songs info JSON for a song through song id.
+			let songInfoJson = await FS.readFileAsync(songIdInfoDir(artistSongs[i]))
+				.then(function(result){
+					let songInfoJson = JSON.parse(result);
+					UTIL.logAsync("The song info for song with song id "+ artistSongs[i] + " was retrieved successfully!");
+					return songInfoJson;
+				})
+				.catch(function(err){
+					let errorMessage = "The song info for song with song id " + artistSongs[i] + " could not be retrieved.";
+					throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
+				});
+			//Getting fields to push to the user for displaying the list of songs.
+			let songInfo = {
+				'songid': artistSongs[i],
+				'song': songInfoJson['title'],
+				'artist': songInfoJson['artist'],
+				'album': songInfoJson['album'],
+			}
+			listOfSongs.push(songInfo);
+		}
+		//Creating JSON object from artist songs.
+		var artistSongs = {
+			'artist': artistName,
+			'songs': listOfSongs,
+		}
+		return res.status(CONSTANTS.OK).json(artistSongs);
+	}catch(err){
+		UTIL.logAsync(err.message);
+		if (isFromClient){
+			// Remove request log
+			UTIL.removeRequestLog(uniqueId);
+			res.status(err.code).json({message: err.message});
+		}
 	}
 }
 
@@ -423,4 +566,5 @@ let getPlaylist = async function(req, res){
 	addSongToPlaylist,
 	deleteSongFromPlaylist,
 	getSong,
+	getArtist,
 };

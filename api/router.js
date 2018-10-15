@@ -32,7 +32,7 @@ const routing = function routing(express_router){
   router.route("/users/reset").get(function(req, res){
     USER_MIDDLEWARE.getResetQuestions(req, res);
   });
-  // Check the security question answers for the user
+  // Check the security question answers for the user with duplication filter
   router.route('/users/reset-check').get(function(req, res){
     // Retrieve the IP address of the request
     let requestIp = req.ip;
@@ -54,6 +54,10 @@ const routing = function routing(express_router){
       return null;
       }
     });
+  });
+  // Retrieve a user profile image from the user and save it
+  router.route('/users/image').get(function(req, res){
+    USER_MIDDLEWARE.saveUserProfileImage(req, res, true);
   });
   //Delete a playlist for the user.
   router.route('/playlist').delete(function(req, res) {
@@ -93,6 +97,11 @@ const routing = function routing(express_router){
   //Gets list of songs matching the search.
   router.route('/search').get(function(req, res) {
     SEARCH_MIDDLEWARE.getSearchResults(req, res);
+  });
+
+  //Gets a list of songs for an artist.
+  router.route('/artist').get(function(req, res) {
+    MUSIC_MIDDLEWARE.getArtist(req, res);
   });
 
   return router;
