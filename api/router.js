@@ -56,7 +56,7 @@ const routing = function routing(express_router){
     });
   });
   // Retrieve a user profile image from the user and save it
-  router.route('/users/image').get(function(req, res){
+  router.route('/users/image').put(function(req, res){
     USER_MIDDLEWARE.saveUserProfileImage(req, res, true);
   });
   //Delete a playlist for the user.

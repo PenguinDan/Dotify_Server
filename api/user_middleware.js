@@ -13,7 +13,7 @@ let checkUsernameAvailability = async function(req, res){
   util.authenticateApp(req).then(function(result){
     // Retrieve the username from the request
     if (!util.isEmpty(req.query)){
-      let username = req.query.username;
+      let username = req.query.username.toLowerCase();
       // Check whether the file for the specified username exists
       if (util.userExists(username)){
 	return res.status(CONSTANTS.OK).json({
@@ -71,7 +71,7 @@ let createUser = function(req, res, isFromClient = false){
   }).then(async function(result){
     util.logAsync("Exctracting user information from request for account creation");
     // The request has passed through all of the tests, create the user account
-    let username = req.body.username;
+    let username = req.body.username.toLowerCase();
     let passwordHash = await bcrypt.hash(req.body.password, 10);
     let secAnswer1Hash = await bcrypt.hash(req.body.securityAnswer1.toLowerCase(), 10);
     let secAnswer2Hash = await bcrypt.hash(req.body.securityAnswer2.toLowerCase(), 10);
@@ -86,7 +86,7 @@ let createUser = function(req, res, isFromClient = false){
       "resetToken" : null,
       "playlist_titles": [],
       "userQuote" : "",
-      "imageBytes" : []
+      "image" : ""
     };
     return userData;
   }).then(async function(userData){
@@ -162,7 +162,7 @@ let updateUser = function(req, res, isFromClient = false){
   // Instantiates an authentication promise
   util.authenticateApp(req).then(async function(result){
     // Retrieve the username and password from the body
-    let username = req.body.username;
+    let username = req.body.username.toLowerCase();
     let clientToken = req.body.token;
 
     if (username && req.body.password && clientToken){
@@ -235,7 +235,7 @@ let getUser = async function(req, res){
   util.authenticateApp(req).then(async function(result){
     util.logAsync("Verifying user information");
     // Retrieve the username and password from the header
-    let username = req.get("username");
+    let username = req.get("username").toLowerCase();
     let password = req.get("password");
 
     // Retrieve the user json file corresponding to the username
@@ -252,7 +252,7 @@ let getUser = async function(req, res){
         return res.status(CONSTANTS.ACCEPTED).json({
 	  username : userJson.username,
 	  userQuote: userJson.userQuote,
-	  profileImage: userJson.imageBytes
+	  profileImage: userJson.image
 	  });
       } else {
         util.logAsync("Passwords do not match");
@@ -274,7 +274,7 @@ let getResetQuestions = function(req, res){
   // Instantiates an authotication promise
   util.authenticateApp(req).then(async function(result){
     // Retrieve the user's username
-    let username = req.get("username");
+    let username = req.get("username").toLowerCase();
     // Check that the username was given by the user
     if (username){
       // Retrieve the user json file associated with their username
@@ -300,7 +300,7 @@ let getResetQuestions = function(req, res){
 let checkQuestionAnswers = function(req, res){
   util.authenticateApp(req).then(async function(result){
     // Check whether the request constains the required information
-    let username = req.get("username");
+    let username = req.get("username").toLowerCase();
     let securityAnswer1 = req.get("securityAnswer1");
     let securityAnswer2 = req.get("securityAnswer2");
 
@@ -352,12 +352,49 @@ let checkQuestionAnswers = function(req, res){
   });
 }
 
-
-let saveUserProfileImage = function(req, res, isFromClient) {
+// Saves the profile image that was passed in by the client
+let saveUserProfileImage = function(req, res, isFromClient = false) {
+  // Creates a unique ID to represent the request if it is from the client
   if (isFromClient){
     var uniqueId = UUID();
   }
+  // Intantiates an authentication promise
+  util.authenticateApp(req).then(async function(result){
+    util.logAsync("Saving the user profile image");
+    // Make sure that all of the required fields are in the body and header
+    let username = req.get("username").toLowerCase();
+    let image = req.body.image;
+    if (username && image) {
+      if (isFromClient) {
+	// Create a request with a unique id
+        await util.addRequestLog(uniqueId, req, CONSTANTS.ADD_USER_PROFILE_IMAGE_REQUEST);
+      }
+      let userJson = await util.getUserDataFile(username);
+      // Store the user image
+      userJson.image = image;
+      // Save the user data file
+      util.saveUserDataFile(username, userJson);
+      // Let the client know that the information was saved successfully
+      if (isFromClient){
+        // Remove the Request log for the current client
+        util.removeRequestLog(uniqueId);
+        return res.status(CONSTANTS.OK);
+      } else {
+        util.logAsync("Successfully finsihed logged request for " + username + " in saveUserProfileImage");
+      }
+    } else {
+      throw new util.RequestError(CONSTANTS.BAD_REQUEST, "Username or Image array have not been provided");
+    }
+  }).catch(function(error){
+    util.logAsync("Error in saveUserProfileImage.\nError Message:" + error.message);
+    if (isFromClient){
+      util.removeRequestLog(uniqueId);
+    }
+    // The user ahs given an invalid request
+    return res.status(error.code).json({message : error.message});
+  });
 }
+
 // Export functions and variables
 module.exports = {
   createUser,

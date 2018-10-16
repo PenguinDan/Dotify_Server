@@ -69,12 +69,16 @@ async function crashRecover(){
         MUSIC_MIDDLEWARE.createPlaylist(request, null);
       }
       break;
-      case ADD_SONG_TO_PLAYLIST_REQUEST:{
+      case CONSTANTS.ADD_SONG_TO_PLAYLIST_REQUEST:{
         MUSIC_MIDDLEWARE.addSongToPlaylist(request, null);
       }
       break;
-      case DELETE_SONG_FROM_PLAYSLIST_REQUEST:{
+      case CONSTANTS.DELETE_SONG_FROM_PLAYSLIST_REQUEST:{
         MUSIC_MIDDLEWARE.deleteSongFromPlaylist(request, null);
+      }
+      break;
+      case CONSTANTS.SAVE_USER_PROFILE_IMAGE_REQUEST: {
+	USER_MIDDLEWARE.saveUserProfileImage(request, null);
       }
       break;
     }
@@ -112,8 +116,8 @@ HTTPSAPP.use(HELMET.hsts({
   force: true
 }));
 
-HTTPSAPP.use(BODY_PARSER.urlencoded({extended: true}));
-HTTPSAPP.use(BODY_PARSER.json());
+HTTPSAPP.use(BODY_PARSER.urlencoded({limit: '40mb', extended: true}));
+HTTPSAPP.use(BODY_PARSER.json({limit: '40mb', extended: true}));
 HTTPSAPP.use('/', ROUTER);
 HTTPSAPP.use(EXPRESS.static(__dirname + '/public'));
 
