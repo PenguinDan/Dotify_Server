@@ -11,7 +11,7 @@ function songIdDataDir(songId){
 	return `${CONSTANTS.SONG_DATA_DIRECTORY}${songId}.mp3`
 }
 //Returns Lame object for converting mp3 to buffer.
-async function getSong(songId){
+function getSong(songId){
     const decoder = new Lame({
         "output": "buffer"
     }).setFile(songId);
@@ -22,35 +22,17 @@ async function getSong(songId){
 let sendSongData = async function(msg){
     try{
         //Setting song id from request.
-		let songId = msg;
-		//Gets the directory for the song info of given song id.
-		let songDataDir = songIdDataDir(songId);
+	let songId = msg;
+	//Gets the directory for the song info of given song id.
+	let songDataDir = songIdDataDir(songId);
         //Checking if the song id is null;
-		if(!songId){
-			let errorMessage = "Song ID name requested was invalid.";
-			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
+	if(!songId){
+		let errorMessage = "Song ID name requested was invalid.";
+		throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
         }
 
-        //Getting the song data JSON for the song.
-        /*let songDataJson = await FS.readFileAsync(songDataDir)
-		.then(function(result){
-			let songDataJson = JSON.parse(result);
-            UTIL.logAsync("The song data json for song with song id "+ songId + " was retrieved successfully!");
-			return JSON.stringify(songDataJson['music']);
-		})
-		.catch(function(err){
-			let errorMessage = "The song data json for song with song id " + songId + " could not be retrieved.";
-			throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
-		});*/
-		let decoder = await getSong(songDataDir)
-        .then(function(result){
-            return result;
-        })
-        .catch(function(error){
-            UTIL.logAsync("Error in constructing LAME object for song decoder.");
-            UTIL.logAsync(error);
-        });
-    
+
+	let decoder = getSong(songDataDir);
 
     	let songBuffer = await decoder.decode()
         .then(function(result){

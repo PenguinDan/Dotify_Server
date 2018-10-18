@@ -1,9 +1,7 @@
 'use strict'
 
-let boolVal = true;
+const bc = require('buffer-chunks');
 
-if(boolVal){
-  let inScope = "Hello";
-}
+let testval = bc(new Buffer("hello world"), 5);
 
-console.log(inScope);
+console.log(testval);

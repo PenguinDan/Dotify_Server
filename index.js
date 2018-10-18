@@ -20,6 +20,7 @@ const CHUNKS = require('buffer-chunks');
 const HASHMAP = require('hashmap');
 const USER_MIDDLEWARE = require('./api/user_middleware');
 const MUSIC_MIDDLEWARE = require('./api/music_middleware');
+const { spawn } = require('child_process');
 
 // Setup Express routes
 const HTTPAPP = EXPRESS();
@@ -134,19 +135,6 @@ HTTP.createServer(HTTPAPP).listen(HTTP_PORT);
 // UDP: receives a message with the song id to be sent back as UDP stream.
 MUSIC_STREAM_SOCKET.on('message', async function(msg, rinfo){
   UTIL.logAsync(`server got: ${msg} from ${rinfo.address}:${rinfo.port}`);
-  if(msg == "0001"){
-    var result = Buffer.from("REPLY");
-      //UDP: Sends the song buffer for a message to the address that it received the request from./\
-      MUSIC_STREAM_SOCKET.send(result, 0, result.length, rinfo.port, rinfo.address, function(err, bytes) {
-        if (err){
-          UTIL.logAsync('Error attempting to send song data steam.\n' + result);
-          UTIL.logAsync(err);
-          throw err
-        };
-        UTIL.logAsync('UDP song data sent to ' + rinfo.address +':'+ rinfo.port);
-      });
-      return;
-  }
   //FOR TESTING CONNECTION _ DELETE AFTER TESTING.
   MUSIC_STREAM.sendSongData(msg)
   .then(function(result){
@@ -154,21 +142,36 @@ MUSIC_STREAM_SOCKET.on('message', async function(msg, rinfo){
         UTIL.logAsync("The song buffer was null.");
         return;
       }
-
+      UTIL.logAsync(Buffer.isBuffer(result));
       //Splits the buffer into seperate datagrams to send.
-      const bufferSplit = 1000;
-      var list = CHUNKS(result, bufferSplit);
-      for(var i = 0; i < bufferSplit;i++){
-        //UDP: Sends the song buffer for a message to the address that it received the request from./\
-        MUSIC_STREAM_SOCKET.send(list[i], 0,list[i].length, rinfo.port, rinfo.address, function(err, bytes) {
-          if (err){
-            UTIL.logAsync('Error attempting to send song data steam.\n' + list[i].length);
-            UTIL.logAsync(err);
-            throw err
-          };
-          UTIL.logAsync('UDP song data sent to ' + rinfo.address +':'+ rinfo.port + ", length of" +list[i].length);
-        });
-      }
+      const bufferSplit = 8000;
+      let list = CHUNKS(result, bufferSplit);
+      let chunkCount = (list.length).toString() + 'x';
+
+      let indexLength = Buffer.from(chunkCount);
+      MUSIC_STREAM_SOCKET.send(indexLength, 0, 16, rinfo.port, rinfo.address, function(err, bytes) {
+        if (err){
+          UTIL.logAsync('Error attempting to send song data length.\n' + result);
+          UTIL.logAsync(err);
+          throw err
+        };
+        UTIL.logAsync('Length of the message ' + rinfo.address +':'+ rinfo.port);
+      });
+
+     UTIL.logAsync('Sending song bytes to Client');
+     let it = 0;
+     for(var i = 0; i < list.length;i++){
+       //UDP: Sends the song buffer for a message to the address that it received the request from.
+       MUSIC_STREAM_SOCKET.send(list[i], 0, bufferSplit, rinfo.port, rinfo.address, function(err, bytes) {
+         if (err){
+           UTIL.logAsync('Error attempting to send song data steam.\n' + list[i].length);
+           UTIL.logAsync(err);
+           throw err
+         }
+       });
+        it += 1;
+    }
+    UTIL.logAsync(`Iteration Value : ${it}`);
   })
   .catch(function(error){
     UTIL.logAsync(error);

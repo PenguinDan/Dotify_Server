@@ -69,7 +69,7 @@ let getSearchResults = async function(req, res){
                 UTIL.logAsync(songId);
 
                 //Pushes the song to the search results.
-                songSearchResults.push(songName);
+                songSearchResults.push({"song_info" :songName, songId});
                 //If the length of results is greater, then 10, stop adding results.
                 if(songSearchResults.length > 10){
                     break;

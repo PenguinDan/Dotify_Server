@@ -50,7 +50,7 @@ const routing = function routing(express_router){
         USER_MIDDLEWARE.checkQuestionAnswers(req, res, true);
       } else {
         UTILITIES.logAsync("Security answer check request for ip address" + requestIp +
-                        " already beging run");
+                        " already being run");
       return null;
       }
     });
