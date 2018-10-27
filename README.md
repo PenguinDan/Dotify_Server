@@ -1,4 +1,5 @@
 # Dotify_Server
+<p align="center"><img src="https://www.penguindan.com/img/dotify.png" width="45%"/></p>
 The backend server for Dotify
 
 ## Requirements
