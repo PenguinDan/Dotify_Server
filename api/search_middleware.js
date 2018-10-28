@@ -12,14 +12,14 @@ function songIdInfoDir(){
 //Returns the search results for the request.
 let getSearchResults = async function(req, res){
     try{
-        //Setting song id from request.
+	        //Setting song id from request.
 		let search = req.query.search.toLowerCase();
 		//Setting directory for song list.
-        let songDir = songIdInfoDir() + 'songlist.txt';
-        //Setting directory for artist list.
+		let songDir = songIdInfoDir() + 'songlist.txt';
+	        //Setting directory for artist list.
 		let artistDir = songIdInfoDir() + 'artistlist.txt';
-        UTIL.logAsync(songDir);
-        
+	        UTIL.logAsync(songDir);
+
  		//Checking if the search param is null;
 		if(!search){
 			let errorMessage = "Search param requested was invalid.";
@@ -32,7 +32,7 @@ let getSearchResults = async function(req, res){
 				throw error;
 			});
 
-        //Getting the song list text file for the search results.
+        	//Getting the song list text file for the search results.
 		let songListFile = await FS.readFileAsync(songDir)
 		.then(function(result){
 			UTIL.logAsync("The song list .txt file was retrieved successfully!");
@@ -42,7 +42,7 @@ let getSearchResults = async function(req, res){
 			let errorMessage = "The song list .txt file could not be retrieved.";
 			throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
         });
-        
+
         //Getting the artist list text file for the search results.
 		let artistListFile = await FS.readFileAsync(artistDir)
 		.then(function(result){
@@ -60,16 +60,20 @@ let getSearchResults = async function(req, res){
         //Adding search results for the songs.
         for(var i = 0; i < songList.length; i++){
             if(songList[i].toLowerCase().match(search)){
+                let songData = songList[i].toString().split(":");
                 //Parsing song name.
-                let songName = songList[i].toString().split(":")[0].replace("\n","");
+                let songName = songData[0].replace("\n","");
 
                 //Getting the song id for the songs found.
-                songId = songList[i].toString().split(":")[1];
+                songId = songData[1];
                 UTIL.logAsync("------SONG ID------");
                 UTIL.logAsync(songId);
 
                 //Pushes the song to the search results.
-                songSearchResults.push({"song_info" :songName, songId});
+                songSearchResults.push({
+			"songid": songId,
+			"song": songName
+		});
                 //If the length of results is greater, then 10, stop adding results.
                 if(songSearchResults.length > 10){
                     break;
@@ -86,12 +90,12 @@ let getSearchResults = async function(req, res){
         var artistSearchResults = [];
         //Adding search results for the artist.
         for(var i = 0; i < artistList.length; i++){
-            //Checks if the artist matches any results. 
+            //Checks if the artist matches any results.
             if(artistList[i].toLowerCase().match(search) || artistList[i].match(songId)){
                 //Parses artist name.
                 let artistName = artistList[i].split(":")[0].replace("\n","");
                 //Pushes the results to the artist results.
-                artistSearchResults.push(artistName);
+                artistSearchResults.push({"artist": artistName});
                 //If the length of results is greater, then 10, stop adding results.
                 if(artistSearchResults.length > 10){
                     break;
@@ -101,8 +105,7 @@ let getSearchResults = async function(req, res){
 
         let returnList = {
             'songs' : songSearchResults,
-            'artist': artistSearchResults,
-
+            'artists': artistSearchResults
         }
         return res.status(CONSTANTS.OK).json(returnList);
 

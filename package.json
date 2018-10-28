@@ -24,6 +24,7 @@
   "homepage": "https://github.com/PenguinDan/Dotify_Server#readme",
   "dependencies": {
     "bcrypt": "^3.0.1",
+    "bittorrent-dht": "^9.0.0",
     "bluebird": "^3.5.2",
     "body-parser": "^1.18.3",
     "buffer-chunks": "^0.1.1",
@@ -40,6 +41,7 @@
     "node-datetime": "^2.1.2",
     "node-lame": "^1.1.0",
     "uuid": "^3.3.2",
+    "webtorrent": "^0.102.4",
     "winston": "^3.1.0"
   }
 }

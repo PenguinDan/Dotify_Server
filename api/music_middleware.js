@@ -290,6 +290,7 @@ let getPlaylist = async function(req, res){
 				let errorMessage = "Json file for " + playlistName + " could not be retrieved.";
 				throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
 			});
+
  		//Getting the song info JSON for a song through song id.
 		let songInfoJson = await FS.readFileAsync(songInfoDir)
 			.then(function(result){
@@ -308,6 +309,17 @@ let getPlaylist = async function(req, res){
 			'artist': songInfoJson['artist'],
 			'album': songInfoJson['album'],
 			'liked': false,
+		}
+
+		// Checking if the song is already in the playlist, checking by songid.
+		for(var i = 0; i < playlistJson['songs'].length; i++){
+			UTIL.logAsync(playlistJson['songs'][i].songid);
+			UTIL.logAsync(songInfo.songid);
+			// Checking if the song is in the playlist already.
+			if(playlistJson['songs'][i].songid == songInfo.songid){
+				let errorMessage = "The song info for song with song id " + songId + " is already in the playlist.";
+				throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
+			}
 		}
 
 		//Updating the user.json with playlists.
@@ -536,18 +548,17 @@ let getArtist = async function(req, res, isFromClient = false){
 					throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
 				});
 			//Getting fields to push to the user for displaying the list of songs.
-			let songInfo = {
-				'songid': artistSongs[i],
-				'song': songInfoJson['title'],
-				'artist': songInfoJson['artist'],
-				'album': songInfoJson['album'],
-			}
+			let songId = artistSongs[i];
+			let songTitle = songInfoJson['title'];
+			let songInfo = {"song_info" :songTitle, songId}
+			
 			listOfSongs.push(songInfo);
 		}
 		//Creating JSON object from artist songs.
 		var artistSongs = {
-			'artist': artistName,
 			'songs': listOfSongs,
+			'artist': [artistName],
+
 		}
 		return res.status(CONSTANTS.OK).json(artistSongs);
 	}catch(err){

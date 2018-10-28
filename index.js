@@ -14,13 +14,12 @@ const BLUEBIRD = require('bluebird');
 const FS = BLUEBIRD.promisifyAll(require('fs'));
 const HELMET = require('helmet');
 const DGRAM = require('dgram');
-const MUSIC_STREAM = require('./api/music_streaming');
+const MUSIC_DECODER = require('./api/music_streaming');
 const RECOMMENDER = require('./api/recommender');
 const CHUNKS = require('buffer-chunks');
 const HASHMAP = require('hashmap');
 const USER_MIDDLEWARE = require('./api/user_middleware');
 const MUSIC_MIDDLEWARE = require('./api/music_middleware');
-const { spawn } = require('child_process');
 
 // Setup Express routes
 const HTTPAPP = EXPRESS();
@@ -88,6 +87,7 @@ async function crashRecover(){
   }
 }
 
+// SSL Cipher Keys
 let cipher =  ['ECDHE-ECDSA-AES256-GCM-SHA384',
 'ECDHE-RSA-AES256-GCM-SHA384',
 'ECDHE-RSA-AES256-CBC-SHA384',
@@ -99,6 +99,9 @@ let cipher =  ['ECDHE-ECDSA-AES256-GCM-SHA384',
 '!aNULL',
 '!MD5',
 '!DSS'].join(':');
+
+
+// Setup Child Process Listeners
 
 // Redirect HTTP Connections to HTTPS
 HTTPAPP.get('*', function(req, res, next) {
@@ -132,53 +135,36 @@ HTTPS.createServer(options, HTTPSAPP).listen(SECURE_PORT);
 HTTP.createServer(HTTPAPP).listen(HTTP_PORT);
 
 
+let songFragments = null;
+const SONG_FRAGMENT_SIZE = 20000;
+const DOUBLE_SIZE = 8;
+const OFFSET_VAL = 0;
+
 // UDP: receives a message with the song id to be sent back as UDP stream.
 MUSIC_STREAM_SOCKET.on('message', async function(msg, rinfo){
-  UTIL.logAsync(`server got: ${msg} from ${rinfo.address}:${rinfo.port}`);
-  //FOR TESTING CONNECTION _ DELETE AFTER TESTING.
-  MUSIC_STREAM.sendSongData(msg)
-  .then(function(result){
-      if(!result){
-        UTIL.logAsync("The song buffer was null.");
-        return;
-      }
-      UTIL.logAsync(Buffer.isBuffer(result));
-      //Splits the buffer into seperate datagrams to send.
-      const bufferSplit = 8000;
-      let list = CHUNKS(result, bufferSplit);
-      let chunkCount = (list.length).toString() + 'x';
+  msg = msg.toString();
+  if (msg.startsWith("x")){
+    msg = msg.substring(1, 5);
+    // Retrieve the buffer song data
+    let songBuffer = await MUSIC_DECODER.getSongBuffer(msg);
+    // Split up the buffer into sizes of SONG_FRAGMENT_SIZE
+    songFragments = CHUNKS(songBuffer, SONG_FRAGMENT_SIZE);
 
-      let indexLength = Buffer.from(chunkCount);
-      MUSIC_STREAM_SOCKET.send(indexLength, 0, 16, rinfo.port, rinfo.address, function(err, bytes) {
-        if (err){
-          UTIL.logAsync('Error attempting to send song data length.\n' + result);
-          UTIL.logAsync(err);
-          throw err
-        };
-        UTIL.logAsync('Length of the message ' + rinfo.address +':'+ rinfo.port);
-      });
+    // Send back a response to the client about the number of fragments
+    // Send the length of the fragments
+    let bufferUtil = Buffer.allocUnsafe(DOUBLE_SIZE);
+    bufferUtil.writeDoubleBE(songFragments.length);
+    MUSIC_STREAM_SOCKET.send(bufferUtil, OFFSET_VAL, DOUBLE_SIZE, rinfo.port, rinfo.address, function(err, bytes){
+        UTIL.logAsync(`Message ${songFragments.length} has been sent to client`);
+    });
+  } else {
+    let fragmentIt = parseInt(msg);
+    MUSIC_STREAM_SOCKET.send(songFragments[fragmentIt], OFFSET_VAL, SONG_FRAGMENT_SIZE, rinfo.port, rinfo.address, function(err, bytes){
+    });
+    UTIL.logAsync("Sent fragment " + fragmentIt);
+  }
 
-     UTIL.logAsync('Sending song bytes to Client');
-     let it = 0;
-     for(var i = 0; i < list.length;i++){
-       //UDP: Sends the song buffer for a message to the address that it received the request from.
-       MUSIC_STREAM_SOCKET.send(list[i], 0, bufferSplit, rinfo.port, rinfo.address, function(err, bytes) {
-         if (err){
-           UTIL.logAsync('Error attempting to send song data steam.\n' + list[i].length);
-           UTIL.logAsync(err);
-           throw err
-         }
-       });
-        it += 1;
-    }
-    UTIL.logAsync(`Iteration Value : ${it}`);
-  })
-  .catch(function(error){
-    UTIL.logAsync(error);
-    throw error;
-  });
 });
-
 
 //The Server socket is listening on specified port.
 MUSIC_STREAM_SOCKET.on('listening', () => {
