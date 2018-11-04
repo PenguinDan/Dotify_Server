@@ -42,6 +42,7 @@
     "node-lame": "^1.1.0",
     "uuid": "^3.3.2",
     "webtorrent": "^0.102.4",
+    "webtorrent-hybrid": "^1.0.6",
     "winston": "^3.1.0"
   }
 }
