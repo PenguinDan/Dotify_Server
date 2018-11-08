@@ -1,7 +1,9 @@
 const USER_MIDDLEWARE = require('./user_middleware');
 const MUSIC_MIDDLEWARE = require('./music_middleware');
 const SEARCH_MIDDLEWARE = require('./search_middleware');
+const LINK_MIDDLEWARE = require('./link_middleware');
 const UTILITIES = require('./helper/utilities');
+const P2P_MIDDLEWARE = require('./p2p_middleware.js');
 let router;
 
 const routing = function routing(express_router){
@@ -84,25 +86,30 @@ const routing = function routing(express_router){
     MUSIC_MIDDLEWARE.addSongToPlaylist(req, res, true);
   });
 
-  //Delete a song from the specified playlist.
+  // Delete a song from the specified playlist.
   router.route('/playlistpage').delete(function(req, res) {
     MUSIC_MIDDLEWARE.deleteSongFromPlaylist(req, res, true);
   });
 
-  //Gets song information for requested son.
+  // Gets song information for requested son.
   router.route('/song').get(function(req, res) {
     MUSIC_MIDDLEWARE.getSong(req, res);
   });
 
-  //Gets list of songs matching the search.
+  // Gets list of songs matching the search.
   router.route('/search').get(function(req, res) {
-    SEARCH_MIDDLEWARE.getSearchResults(req, res);
+    SEARCH_MIDDLEWARE.query(req, res);
   });
 
-  //Gets a list of songs for an artist.
+  // Gets a list of songs for an artist.
   router.route('/artist').get(function(req, res) {
     MUSIC_MIDDLEWARE.getArtist(req, res);
   });
+
+  // Starts a process and gives the GUID of the started process back to the user
+  router.route('/initialize-peer').get(function(req, res){
+    LINK_MIDDLEWARE.createPeer(req, res);
+  }); 
 
   return router;
 }

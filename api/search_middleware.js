@@ -1,121 +1,81 @@
+'use strict'
+
 //Importing modules
-const FS = require('fs');
+const BLUEBIRD = require('bluebird');
+const FS = BLUEBIRD.promisifyAll(require('fs'));
 const UTIL = require('./helper/utilities');
-const CONSTANTS = require('./helper/constants');
+const CONST = require('./helper/constants');
 
+// File constants
+const SONG = 0;
+const ARTIST = 1;
+const ALBUM = 2;
 
-//Returns the directory for the song information.
-function songIdInfoDir(){
-	return `${CONSTANTS.SONG_DATA_DIRECTORY}`
-}
-
-//Returns the search results for the request.
-let getSearchResults = async function(req, res){
-    try{
-	        //Setting song id from request.
-		let search = req.query.search.toLowerCase();
-		//Setting directory for song list.
-		let songDir = songIdInfoDir() + 'songlist.txt';
-	        //Setting directory for artist list.
-		let artistDir = songIdInfoDir() + 'artistlist.txt';
-	        UTIL.logAsync(songDir);
-
- 		//Checking if the search param is null;
-		if(!search){
-			let errorMessage = "Search param requested was invalid.";
-			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
-		}
- 		//Authenticating application.
-		await UTIL.authenticateApp(req)
-			.then(function(result){})
-			.catch(function(error){
-				throw error;
-			});
-
-        	//Getting the song list text file for the search results.
-		let songListFile = await FS.readFileAsync(songDir)
-		.then(function(result){
-			UTIL.logAsync("The song list .txt file was retrieved successfully!");
-			return result;
-		})
-		.catch(function(err){
-			let errorMessage = "The song list .txt file could not be retrieved.";
-			throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
-        });
-
-        //Getting the artist list text file for the search results.
-		let artistListFile = await FS.readFileAsync(artistDir)
-		.then(function(result){
-			UTIL.logAsync("The artist list .txt file was retrieved successfully!");
-			return result;
-		})
-		.catch(function(err){
-			let errorMessage = "The artist list .txt file could not be retrieved.";
-			throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
-        });
-        //Parsing song list file.
-        var songList = songListFile.toString().split("~");
-        var songSearchResults = [];
-        var songId;
-        //Adding search results for the songs.
-        for(var i = 0; i < songList.length; i++){
-            if(songList[i].toLowerCase().match(search)){
-                let songData = songList[i].toString().split(":");
-                //Parsing song name.
-                let songName = songData[0].replace("\n","");
-
-                //Getting the song id for the songs found.
-                songId = songData[1];
-                UTIL.logAsync("------SONG ID------");
-                UTIL.logAsync(songId);
-
-                //Pushes the song to the search results.
-                songSearchResults.push({
-			"songid": songId,
-			"song": songName
-		});
-                //If the length of results is greater, then 10, stop adding results.
-                if(songSearchResults.length > 10){
-                    break;
-                }
-            }
+function search(match, jsonObj, resultsList) {
+    for(let itemTitle in jsonObj){
+        if (itemTitle.toLowerCase().includes(match)){
+            // Get a mapping of the item title to the guid
+            resultsList[itemTitle] = jsonObj[itemTitle].guid;
         }
-
-        if(!songId){
-            UTIL.logAsync("Song id is null");
-            songId = "9999999";
-        }
-        //Parsing artist list file.
-        var artistList = artistListFile.toString().split("~");
-        var artistSearchResults = [];
-        //Adding search results for the artist.
-        for(var i = 0; i < artistList.length; i++){
-            //Checks if the artist matches any results.
-            if(artistList[i].toLowerCase().match(search) || artistList[i].match(songId)){
-                //Parses artist name.
-                let artistName = artistList[i].split(":")[0].replace("\n","");
-                //Pushes the results to the artist results.
-                artistSearchResults.push({"artist": artistName});
-                //If the length of results is greater, then 10, stop adding results.
-                if(artistSearchResults.length > 10){
-                    break;
-                }
-            }
-        }
-
-        let returnList = {
-            'songs' : songSearchResults,
-            'artists': artistSearchResults
-        }
-        return res.status(CONSTANTS.OK).json(returnList);
-
-
-    }catch(error){
-        UTIL.logAsync(error.message);
-        return res.status(error.code).json({message: error.message});
     }
 }
+
+async function query(req, res) {
+    // Authenticate the application
+    await UTIL.authenticateApp(req).then(async (result) => {
+        // Retrieve the query criteria
+        let searchQuery = req.query.search.toLowerCase();
+
+        if (!searchQuery) {
+            throw new UTIL.RequestError(CONST.BAD_REQUEST, "Empty search query");
+        }
+
+        // Retrieve the song list
+        let songList = await FS.readFileAsync(CONST.SONG_DATABASE_FILE);
+        let songJson = JSON.parse(songList);
+
+        let songQueryResult = new Array(3);
+        for (let it = 0; it < 3; it++) {
+            songQueryResult[it] = {}
+        }
+
+        // Search and update the corresponding song query results
+        search(searchQuery, songJson, songQueryResult[SONG]);
+
+        return [searchQuery, songQueryResult];
+    }).then(async (result) => {
+        let searchQuery = result[0];
+        let songQueryResult = result[1];
+
+        let artistList = await FS.readFileAsync(CONST.ARTIST_DATABASE_FILE);
+        let artistJson = JSON.parse(artistList);
+
+        search(searchQuery, artistJson, songQueryResult[ARTIST]);
+
+        return [searchQuery, songQueryResult];
+
+    }).then(async (result) => {
+        let searchQuery = result[0];
+        let songQueryResult = result[1];
+
+        let albumList = await FS.readFileAsync(CONST.ALBUM_DATABASE_FILE);
+        let albumJson = JSON.parse(albumList);
+
+        search(searchQuery, albumJson, songQueryResult[ALBUM]);
+
+        return res.status(CONST.OK).json({
+            "song" : songQueryResult[SONG],
+            "artist" : songQueryResult[ARTIST],
+            "album" : songQueryResult[ALBUM]
+        });
+
+    }).catch((err) => {
+        UTIL.logAsync(`Error Message: ${err.message}`)
+        return res.status(err.code).json({'message' : err.message})
+    })
+}
+
 //Exports for the modules.
 module.exports = {
-	getSearchResults,
+	query
 };

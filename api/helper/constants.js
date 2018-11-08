@@ -46,7 +46,10 @@ module.exports = {
   SERVER_DATA_FILEPATH : './api/config/server_data.json',
   SECURITY_ANSWER_QUEUE_FILEPATH : './api/config/security_answer_queue.json',
   REQUEST_LOG_FILEPATH : './api/config/request_log.json',
+  UDP_CONFIG_FILEPATH : './api/config/udp_ports.json',
 
   // Identify server music filepaths and directory
-  SONG_DATA_DIRECTORY : './api/models/songs/'
+  SONG_DATABASE_FILE : './api/models/Song_Database/Songs.json',
+  ARTIST_DATABASE_FILE : './api/models/Song_Database/Artists.json',
+  ALBUM_DATABASE_FILE : './api/models/Song_Database/Albums.json'
 };
