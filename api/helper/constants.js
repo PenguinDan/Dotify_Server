@@ -51,5 +51,6 @@ module.exports = {
   // Identify server music filepaths and directory
   SONG_DATABASE_FILE : './api/models/Song_Database/Songs.json',
   ARTIST_DATABASE_FILE : './api/models/Song_Database/Artists.json',
-  ALBUM_DATABASE_FILE : './api/models/Song_Database/Albums.json'
+  ALBUM_DATABASE_FILE : './api/models/Song_Database/Albums.json',
+  GUID_MAPPING_FILE : './api/models/Song_Database/Guid_To_Info.json'
 };

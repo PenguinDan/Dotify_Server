@@ -1,4 +1,5 @@
 'use strict'
+
 // Modules
 const util = require('./helper/utilities');
 const bcrypt = require('bcrypt');
@@ -55,14 +56,14 @@ let createUser = function(req, res, isFromClient = false){
       }
       util.logAsync("Checking request body validity");
       // Check whether the username already exists
-      let userDirectoryExists = util.userExists(req.body.username);
+      let userDirectoryExists = util.userExists(req.body.username.toLowerCase());
       if (!userDirectoryExists){
         util.logAsync("Username is unique, creating account");
         return null;
       } else {
         util.logAsync("Create account username is not unique");
         // The username already exists
-        throw new util.RequestError(CONSTANTS.NOT_ACCEPTABLE, "Username cannot be used");
+        throw new util.RequestError(CONSTANTS.NOT_ACCEPTABLE, "Username cannot be used, username has already been taken.");
       }
     } else {
       util.logAsync("Create account body does not contain required information");

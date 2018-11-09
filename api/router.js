@@ -111,6 +111,10 @@ const routing = function routing(express_router){
     LINK_MIDDLEWARE.createPeer(req, res);
   }); 
 
+  router.route('/add-seed-torrent').get(function(req, res){
+    P2P_MIDDLEWARE.downloadSeed(req, res);
+  });
+
   return router;
 }
 
