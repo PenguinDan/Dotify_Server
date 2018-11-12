@@ -32,9 +32,9 @@ async function crashRecover(){
   // Open the request logs json file
   let requestLogs = await FS.readFileAsync(CONSTANTS.REQUEST_LOG_FILEPATH);
   // Turn the request log into a hash map object
-  requestLog = new HASHMAP(JSON.parse(requestLog));
+  requestLogs = new HASHMAP(JSON.parse(requestLog));
   // Retrieve all of the values from the hashmap
-  let uuidKeys = requestLog.keys();
+  let uuidKeys = requestLogs.keys();
   // Do each request
   for (let uuid of uuidKeys){
     request = requestLog.get(uuid);
@@ -76,6 +76,7 @@ async function crashRecover(){
   UTIL.removeRequestLog(...uuidKeys);
   }
 }
+crashRecover();
 
 // SSL Cipher Keys
 let cipher =  ['ECDHE-ECDSA-AES256-GCM-SHA384',

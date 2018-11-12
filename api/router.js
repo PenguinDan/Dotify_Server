@@ -76,8 +76,9 @@ const routing = function routing(express_router){
     MUSIC_MIDDLEWARE.getAllPlaylistTitle(req, res);
   });
 
-  // Get the playlistspage of the user.
+  // Gets all of the songs for a specific playlist for a user
   router.route('/playlistpage').get(function(req, res) {
+    UTILITIES.logAsync("Test test Here");
     MUSIC_MIDDLEWARE.getPlaylist(req, res);
   });
 
@@ -111,7 +112,7 @@ const routing = function routing(express_router){
     LINK_MIDDLEWARE.createPeer(req, res);
   }); 
 
-  router.route('/add-seed-torrent').get(function(req, res){
+  router.route('/add-seed-torrent').put(function(req, res){
     P2P_MIDDLEWARE.downloadSeed(req, res);
   });
 
