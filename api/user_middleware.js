@@ -85,7 +85,7 @@ let createUser = function(req, res, isFromClient = false){
       "securityQuestion2" : req.body.securityQuestion2,
       "securityAnswer2" : secAnswer2Hash,
       "resetToken" : null,
-      "playlist_titles": [],
+      "playlistTitles": {},
       "userQuote" : "",
       "image" : ""
     };

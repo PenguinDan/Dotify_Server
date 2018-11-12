@@ -12,10 +12,12 @@ const ARTIST = 1;
 const ALBUM = 2;
 
 function search(match, jsonObj, resultsList) {
-    for(let itemTitle in jsonObj){
-        if (itemTitle.toLowerCase().includes(match)){
+    for(let item in jsonObj) {
+        if(item.toLowerCase().includes(match)) {
+            let dict = {};
+            dict[item] = jsonObj[item];
             // Get a mapping of the item title to the guid
-            resultsList[itemTitle] = jsonObj[itemTitle].guid;
+            resultsList.push(dict);
         }
     }
 }
@@ -36,10 +38,9 @@ async function query(req, res) {
 
         let songQueryResult = new Array(3);
         for (let it = 0; it < 3; it++) {
-            songQueryResult[it] = {}
+            songQueryResult[it] = new Array();
         }
 
-        // Search and update the corresponding song query results
         search(searchQuery, songJson, songQueryResult[SONG]);
 
         return [searchQuery, songQueryResult];

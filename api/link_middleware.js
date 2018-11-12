@@ -39,7 +39,7 @@ function createPeer(req, res){
     }).catch(function(error) {
         // Error while running the create peer function
         UTIL.logAsync(`Error in link_middleware.js\nError Message: ${error.message}`)
-        return res.status(error.code).json({"Message" : error.message});
+        return res.status(error.code).json({"message" : error.message});
     });
 }
 

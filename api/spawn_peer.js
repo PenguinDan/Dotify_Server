@@ -32,6 +32,7 @@ PEER_SOCKET.on('message', (msg, rinfo) => {
             udpJson.safePorts.unshift(port);
             // Save the udp json object to disk
             FS.writeFile(CONSTANTS.UDP_CONFIG_FILEPATH, JSON.stringify(udpJson), (err) => {
+                UTIL.logAsync(`Port ${port} closed. Child killed.`);
                 UTIL.logAsync("Saved updated udp json file");
                 // End the process
                 process.exit(0);

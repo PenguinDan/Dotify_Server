@@ -51,14 +51,14 @@ class RequestError extends Error{
 // Checks whether the application contains the correct credentials
 function authenticateApp(req){
   return new Promise(function(resolve, reject){
-  // Retrieves the Application Key
+    // Retrieves the Application Key
     let appKey = req.get('AppKey');
     // Checks whether we have an application key
     if(appKey){
       if(appKey != APPKEY){
         // The client has passed an invalid AppKey to the server
         logAsync("The client has passed an invalid AppKey to the server");
-	 throw new RequestError(CONSTANTS.UNAUTHORIZED, "Invalid AppKey provided by client");
+	      throw new RequestError(CONSTANTS.UNAUTHORIZED, "Invalid AppKey provided by client");
       }
       // The appkey given by the application is correct.
       logAsync("The AppKey given by the application is correct");

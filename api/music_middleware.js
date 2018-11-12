@@ -1,20 +1,11 @@
  'use strict'
 //Importing modules
-const FS = require('fs');
+const BLUEBIRD = require('bluebird');
+const FS = BLUEBIRD.promisifyAll(require('fs'));
 const UTIL = require('./helper/utilities');
 const CONSTANTS = require('./helper/constants');
 const UUID = require('uuid/v4');
-var dateTime = require('node-datetime');
 
-//Returns the users playlist directory.
-function userPlaylistDir(username, playlist){
-	return `${CONSTANTS.USER_DATA_DIRECTORY}${username}/playlists/${playlist}.json`;
-}
-
-//Returns the directory for the song information.
-function songIdInfoDir(songId){
-	return `${CONSTANTS.SONG_INFO_DIRECTORY}/${songId}.json`
-}
  //Delete playlist for the user.
 let deletePlaylist = async function(req, res, isFromClient = false){
 	// Create a unique identifier for the current request
@@ -95,124 +86,80 @@ let deletePlaylist = async function(req, res, isFromClient = false){
 		}
 	}
  }
+
+
  //Create playlist for the user.
 let createPlaylist = async function(req, res, isFromClient = false){
 	// Create a unique identifier for the current request
 	if (isFromClient){
 		var uniqueId = UUID();
+		// Log the request
+		await UTIL.addRequestLog(uniqueId, req, CONSTANTS.CREATE_PLAYLIST_REQUEST);
 	}
-	try{
-		let playlistName = req.query.playlist;
-		let username = req.query.username.toLowerCase();
-		UTIL.logAsync("Playlist: " +playlistName);
- 		//Get the id of the user from req.
-		await UTIL.authenticateApp(req);
-		if (isFromClient){
-			// Log the request
-			await UTIL.addRequestLog(uniqueId, req, CONSTANTS.CREATE_PLAYLIST_REQUEST);
-		}
-		UTIL.logAsync("Username:" + username);
-		//Retrieving the userJson for the requesting user.
-		let userJson = await UTIL.getUserDataFile(username)
-			.then(function(result){
-			return result;
-			})
-			.catch(function(error){
-				//The JSON file for the user did not exist.
-				throw error;
-			});
 
-		// Checks if the user json is null.
-		if(!userJson){
-			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "The username given was null.");
+	// Authenticate whether the client is authorized to sent the request
+	UTIL.authenticateApp(req).then(async (result) => {
+		// Check whether the client has sent the necessary body items
+		if (!req.body.playlist || !req.body.username) {
+			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "Username and playlist must be specified");
 		}
 
-		//Checking if the playlist request name is null.
-		if(!playlistName){
-			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "The new playlist name was not specified with request.");
-		}
- 		if(userJson['playlist_titles'].includes(playlistName)){
-			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST,"The playlist for the user already exist.");
-		}
- 		let playlistDir = userPlaylistDir(username, playlistName)
+		let playlistName = req.body.playlist;
+		let username = req.body.username.toLowerCase();
 
-		//Setting the date for when the playlist was created.
-		var dt = dateTime.create();
-		dt.format('m/d/Y');
-		let date = new Date(dt.now());
- 		//Creating JSON object for the playlist.
-		let playlistJson = {
-			'name' : playlistName,
-			'songs' : [],
-			'song_count': 0,
-			'created_date': date,
+		// Retrieve the user's json file
+		let userJson = await UTIL.getUserDataFile(username);
+
+		// Check whether a playlist already exists with the current name
+		if (userJson["playlistTitles"][playlistName]) {
+			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "Playlist name already exists for the user");
 		}
- 		// User playlist.json for specified playlist.
-		// corresponding with the user's username
-		await FS.writeFile(playlistDir, JSON.stringify(playlistJson),(err) => {
-			if (err){
-				let errorMessage = "Json file for " + playlistName + " could not be saved.";
-				throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
-			}
-			UTIL.logAsync("Playlist file save request for " + playlistName+ " was a success!");
-			return true;
-			});
- 		//Updating the user.json with playlists.
-		userJson['playlist_titles'].push(playlistName);
- 		//Saving the user.json with the new playlist saved.
-		await UTIL.saveUserDataFile(username, userJson)
-			.then(function(result){
-				if (isFromClient){
-					// Remove the request log
-					UTIL.removeRequestLog(uniqueId);
-					//returning user's json file with an 200 status.
-					return res.status(CONSTANTS.OK).json(userJson['playlist_titles']);
-				} else {
-					UTIL.logAsync("Successfully finished logged request for " + username + " in create playlist");
-				}
-			})
-			.catch(function(error){
-				//The JSON file for the user did not exist.
-				throw error;
-			});
-	}catch(error){
-		UTIL.logAsync(error.message);
-		if (isFromClient){
+
+		// If we were able to reach to this point, it means that all the checks have been passed
+		userJson["playlistTitles"][playlistName] = [];
+		
+		// Save the user file
+		await UTIL.saveUserDataFile(username, userJson);
+
+		return res.status(CONSTANTS.CREATED).json({message : "Playlist created successfully."});
+
+		}).catch((error) => {
+		UTIL.logAsync(`Error in CreatePlaylist.\nError Message: ${error.message}`);
+		if (isFromClient) {
 			// Remove the saved request log
 			UTIL.removeRequestLog(uniqueId);
-			return res.status(error.code).json({message: error.message});
+			return res.status(error.code).json({message : error.message});
 		}
-	}
+	});
  }
- //get a list of playlist from user.
-let getPlaylistList = async function(req, res){
-	try{
-		//Get the id of the user from req.
-		await UTIL.authenticateApp(req)
-			.then(function(result){})
-			.catch(function(error){
-				throw error;
-			});
-		//Retrieving the userJson for the requesting user.
-		let userJson = await UTIL.getUserDataFile(req.query.username.toLowerCase())
-			.then(function(result){
-			return result;
-		})
-		.catch(function(error){
-			//The JSON file for the user did not exist.
-			throw error;
-		});
-		if(!userJson){
-			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "The username given was null.");
+
+ // Retrieves all of the playlist titles for a specifc user
+let getAllPlaylistTitle = function(req, res){
+	// Authenticate whether the client is authorized to sent the request
+	UTIL.authenticateApp(req).then(async (result) =>{
+		// Check if the request contains a username
+		if (!req.get("username")) {
+			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "Username must be defined");
 		}
-		//returning user's playlist_list with an 200 status.
-		return res.status(CONSTANTS.OK).json(userJson.playlist_titles);
-	}catch(error){
-		UTIL.logAsync(error.message);
-		return res.status(error.code).json({message: error.message});
-	}
+
+		// Retrieve a list of playlist for the user
+		let username = req.get("username").toLowerCase();
+		let userJson = await UTIL.getUserDataFile(username);
+
+		// Get the list of all of the playlist titles
+		let playlistTitles = Object.keys(userJson["playlistTitles"]);
+
+		return res.status(CONSTANTS.OK).json({
+			message : "Playlist retrieved successfully",
+			playlists : playlistTitles
+		});
+	}).catch((err) => {
+		UTIL.logAsync(`Error in getAllPlaylistTitle.\nError Message: ${err.message}`);
+		return res.status(err.code).json({message: err.message});
+	})
 }
- //get a playlist for user.
+
+ // Retrieves all of the specific songs for a playlist belonging for a user
 let getPlaylist = async function(req, res){
  	try{
 		let username = req.query.username.toLowerCase();
@@ -248,107 +195,58 @@ let getPlaylist = async function(req, res){
 		res.status(err.code).json({message: err.message});
 	}
 }
- let addSongToPlaylist = async function(req, res, isFromClient = false){
-	let playlistName =  req.query.playlist;
-	let songId = req.query.songid;
-	let username = req.query.username.toLowerCase();
-	let playlistDir = userPlaylistDir(username, playlistName);
-	let songInfoDir = songIdInfoDir(songId);
-	if (isFromClient) {
-		// Create a unique identifier for the current request
-		var uniqueId = UUID();
-	}
-	try{
-		//Checking if the playlist name is null.
-		if(!playlistName){
-			UTIL.logAsync("Playlist name requested was invalid.")
-			return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Playlist name requested was invalid"});
-		}
-		//Checking if the song id is null;
-		if(!songId){
-			let errorMessage = "Song ID name requested was invalid.";
-			return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Song ID name requested was invalid"});
-		}
- 		//Authenticating application.
-		await UTIL.authenticateApp(req)
-			.then(function(result){})
-			.catch(function(error){
-				throw error;
-			});
-		if (isFromClient) {
-			// Save the request log
-			await UTIL.addRequestLog(uniqueId, req, CONSTANTS.ADD_SONG_TO_PLAYLIST_REQUEST);
-		}
- 		//Reading the playlist JSON through the playlist.
-		let playlistJson = await FS.readFileAsync(playlistDir)
-			.then(function(result){
-				let playlistJson = JSON.parse(result);
-				UTIL.logAsync("The user playlist "+ playlistName + " was retrieved successfully!");
-				return playlistJson;
-			})
-			.catch(function(err){
-				let errorMessage = "Json file for " + playlistName + " could not be retrieved.";
-				throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
-			});
 
- 		//Getting the song info JSON for a song through song id.
-		let songInfoJson = await FS.readFileAsync(songInfoDir)
-			.then(function(result){
-				let songInfoJson = JSON.parse(result);
-				UTIL.logAsync("The song info for song with song id "+ songId + " was retrieved successfully!");
-				return songInfoJson;
-			})
-			.catch(function(err){
-				let errorMessage = "The song info for song with song id " + songId + " could not be retrieved.";
-				throw new UTIL.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
-			});
- 		//Getting fields to push to the user for displaying the list of songs.
-		let songInfo = {
-			'songid': songId,
-			'song': songInfoJson['title'],
-			'artist': songInfoJson['artist'],
-			'album': songInfoJson['album'],
-			'liked': false,
+// Adds a specific song to a playlist
+let addSongToPlaylist = function(req, res, isFromClient = false){
+	// Check whether the request contains the proper credentitals
+	UTIL.authenticateApp(req).then(async (result) =>{
+		// Check if we have all of the correct information stored in the 
+		// request body
+		if (!req.body.username || !req.body.guid || !req.body.playlist) {
+			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "Request body misconfigured");
+		}
+		
+		let userJson = UTIL.getUserDataFile(req.body.username.toLowerCase());
+		// Retrieve the GUID file
+		return userJson;
+	}).then(async (result) => {
+		// Retrieve the file that contains the mapping for every song
+		let guidMapping = await FS.readFileAsync(CONSTANTS.GUID_MAPPING_FILE);
+		guidMapping = JSON.parse(guidMapping);
+
+		return {
+			jsonFile : result,
+			songInfo : guidMapping[req.body.guid]
+		};
+	}).then((result)=> {
+		let userJson = result.jsonFile;
+		let songInfo = result.songInfo;
+
+		if (!userJson["playlistTitles"][req.body.playlist]){
+			throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, "Playlist for user does not exist");
 		}
 
-		// Checking if the song is already in the playlist, checking by songid.
-		for(var i = 0; i < playlistJson['songs'].length; i++){
-			UTIL.logAsync(playlistJson['songs'][i].songid);
-			UTIL.logAsync(songInfo.songid);
-			// Checking if the song is in the playlist already.
-			if(playlistJson['songs'][i].songid == songInfo.songid){
-				let errorMessage = "The song info for song with song id " + songId + " is already in the playlist.";
-				throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
+		// Add the requested song to the user's playlist
+		userJson["playlistTitles"][req.body.playlist].push(
+			{
+				"songTitle" : songInfo.songTitle,
+				"guid" : req.body.guid,
+				"album" : songInfo.album,
+				"artist" : songInfo.artist
 			}
-		}
+		);
 
-		//Updating the user.json with playlists.
-		playlistJson['songs'].push(songInfo);
- 		//Updating the song count for playlist JSON.
-		playlistJson['song_count'] += 1;
- 		// Updating the playlist to include the new song, writing to json.
-		await FS.writeFile(playlistDir, JSON.stringify(playlistJson),(err) => {
-			if (err){
-				let errorMessage = "Json file for " + playlistName + " could not be saved.";
-				throw new UTIL.RequestError(CONSTANTS.BAD_REQUEST, errorMessage);
-			}
-			UTIL.logAsync("Playlist file save request for " + playlistName + " was a success!");
-			if (isFromClient){
-				//Remove the saved request log
-				UTIL.removeRequestLog(uniqueId);
-				return res.status(CONSTANTS.OK).json(playlistJson);
-			} else {
-				UTIL.logAsync("Successfully finsihed logged request for " + username + " in addToPlaylist");
-			}
+		// Save the now updated user file
+		UTIL.saveUserDataFile(req.body.username.toLowerCase(), userJson);
+
+		return res.status(CONSTANTS.OK).json({message : "Song added successfully"});
+
+	}).catch((err) => {
+		UTIL.logAsync(`Error Message: ${err.message}`);
+		return res.status(err.code).json({
+			"message" : err.message
 		});
-	}catch(err){
-		UTIL.logAsync(err.message);
-		if (isFromClient){
-			// Remove the saved request log
-			UTIL.removeRequestLog(uniqueId);
-			res.status(err.code).json({message: err.message});
-		}
-	}
+	});
 }
 
 //Deleting the song from the playlist json file.
@@ -574,10 +472,9 @@ let getArtist = async function(req, res, isFromClient = false){
 //Exports for the modules.
  module.exports = {
 	createPlaylist,
-	getPlaylistList,
+	getAllPlaylistTitle,
 	getPlaylist,
 	deletePlaylist,
-	userPlaylistDir,
 	addSongToPlaylist,
 	deleteSongFromPlaylist,
 	getSong,

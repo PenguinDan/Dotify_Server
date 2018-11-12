@@ -73,7 +73,7 @@ const routing = function routing(express_router){
 
   // Get the playlists' of the user.
   router.route('/playlist').get(function(req, res) {
-    MUSIC_MIDDLEWARE.getPlaylistList(req, res);
+    MUSIC_MIDDLEWARE.getAllPlaylistTitle(req, res);
   });
 
   // Get the playlistspage of the user.
