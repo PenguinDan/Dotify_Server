@@ -39,7 +39,7 @@ async function downloadSeed(req, res){
     	let torrent = await CLIENT.add(torrentId);
     	UTIL.logAsync("Client: " +  CLIENT.nodeId +  " Added torrent: " + torrent.infoHash)
 
-    	torrent.on('done', async () => {
+    	torrent.on('done', async function(){
        		 UTIL.logAsync('Torrent download finished.')
 
         	SERVER.send(torrent.torrentFile, 0, message.length, PORT, HOST, function(err, bytes) {
@@ -48,7 +48,7 @@ async function downloadSeed(req, res){
         	});
 
         	let torrent = await CLIENT.seed(buffer)
-        	UTIL.logAsync("Client: ", CLIENT.nodeId, " Added seeded torrent: ", torrent.infoHash);
+        	UTIL.logAsync("Client: " + CLIENT.nodeId +  " Added seeded torrent: " + torrent.infoHash);
       	});
 	}catch(err){
 	   UTIL.logAsync(err.message);

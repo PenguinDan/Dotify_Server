@@ -6,11 +6,12 @@ const UTIL = require('./helper/utilities');
 const DGRAM = require('dgram');
 const BLUEBIRD = require('bluebird');
 const FS = BLUEBIRD.promisifyAll(require('fs'));
+var WebTorrent = require('webtorrent-hybrid')
+let CLIENT = new WebTorrent();
 
 // Setup UDP Socket
 const PEER_SOCKET = DGRAM.createSocket('udp4');
 
-// Script Values
 let port = 0;
 
 // Test to see that the socket is listening on the specified port
@@ -39,9 +40,34 @@ PEER_SOCKET.on('message', (msg, rinfo) => {
             });
         })
     } else {
-        UTIL.logAsync("Message from client: " + msg);
+        UTIL.logAsync("GUID from client: " + msg + " from " + rinfo.address + ":" + rinfo.port);
+        downloadSeed(msg, rinfo.address, rinfo.port);
     }
 });
+
+
+// Downloads and seeds a torrent after it is finished downloading.
+async function downloadSeed(GUID, client_add, client_port ){
+    try{
+        UTIL.logAsync("Downloading and seeding torrent");
+        let torrentId = String(GUID);
+        if(!torrentId){
+            UTIL.logAsync("Torrent id  requested was invalid.")
+            return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Torrent Id requested was invalid"});
+        }
+        var torrent = await CLIENT.add(torrentId);        
+        UTIL.logAsync("Client: " +  CLIENT.nodeId +  " Added torrent: " + torrent.infoHash);
+        torrent.on('done', async function(){
+            UTIL.logAsync('Torrent download finished.');
+            PEER_SOCKET.send(this.fileTorrent, 0, this.fileTorrent.length, client_port, client_add, function(err, bytes) {
+                if (err) throw err;
+                UTIL.logAsync('UDP message sent to ' + client_add +':'+ client_port);
+            });
+        }); 
+    }catch(err){
+            UTIL.logAsync(err.message);
+    }
+}
 
 // Received a message from the parent
 process.on('message', function(portVal){

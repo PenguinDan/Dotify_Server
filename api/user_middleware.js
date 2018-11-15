@@ -115,22 +115,6 @@ let createUser = function(req, res, isFromClient = false){
       util.logAsync("Playlist directory creation for " + userData.username + " was a success!");
     });
     return userData;
-  }).then(async function(userData){
-    // Create the recommender file for the user
-    let recommenderFile = `${CONSTANTS.USER_DATA_DIRECTORY}${userData.username}/recommender.json`;
-    // Create the empty recommender JSON object
-    let recommenderJson = {
-      "likes" : [],
-      "dislikes" : []
-    };
-    await FS.writeFile(recommenderFile, JSON.stringify(recommenderJson), (err) => {
-      if(err){
-        let errorMessage = "Recommender file for" + userData.username + " could not be created.";
-        util.logAsync(errorMessage);
-        throw new util.RequestError(CONSTANTS.INTERNAL_SERVER_ERROR, errorMessage);
-      }
-    });
-    return userData;
   }).then(function(userData){
     // Save the user data file
     util.saveUserDataFile(userData.username, userData);

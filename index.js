@@ -14,17 +14,26 @@ const HELMET = require('helmet');
 const HASHMAP = require('hashmap');
 const USER_MIDDLEWARE = require('./api/user_middleware');
 const MUSIC_MIDDLEWARE = require('./api/music_middleware');
+const SEED_MUSIC = require('./Mp3_Dump/seed_music.js');
+const { spawn } = require('child_process');
+const DGRAM = require('dgram');
+const LINK_MIDDLEWARE = require('./api/link_middleware');
 
 // Setup Express routes
 const HTTPAPP = EXPRESS();
 const HTTPSAPP = EXPRESS();
+const PEER_LINK_SOCKET = DGRAM.createSocket('udp4');
 
 // File Constants
 const ONE_YEAR = 31536000000;
 const HTTP_PORT = 80;
 const SECURE_PORT = 443;
+const SPAWN_PEER_PORT = 40000;
 const CERT_LOC = '/etc/letsencrypt/live/www.dotify.online/';
 const ROUTER = ROUTES(EXPRESS.Router());
+
+// Incrase server listener count
+require('events').EventEmitter.defaultMaxListeners = 30;
 
 // Before anything, make sure to run any method that hasn't finished
 // running because of a server crash
@@ -32,12 +41,12 @@ async function crashRecover(){
   // Open the request logs json file
   let requestLogs = await FS.readFileAsync(CONSTANTS.REQUEST_LOG_FILEPATH);
   // Turn the request log into a hash map object
-  requestLogs = new HASHMAP(JSON.parse(requestLog));
+  requestLogs = new HASHMAP(JSON.parse(requestLogs));
   // Retrieve all of the values from the hashmap
   let uuidKeys = requestLogs.keys();
   // Do each request
   for (let uuid of uuidKeys){
-    request = requestLog.get(uuid);
+    let request = requestLogs.get(uuid);
     // Retrieve the request type of the logged request
     let requestType = request.requestType;
     // Depending on the request type, send the request the the appropriate
@@ -47,7 +56,7 @@ async function crashRecover(){
         USER_MIDDLEWARE.createUser(request, null);
       }
       break;
-      case COSNTANTS.UPDATE_USER_PASSWORD_REQUEST:{
+      case CONSTANTS.UPDATE_USER_PASSWORD_REQUEST:{
         USER_MIDDLEWARE.updateUser(request, null);
       }
       break;
@@ -121,3 +130,34 @@ let options = {
 
 HTTPS.createServer(options, HTTPSAPP).listen(SECURE_PORT);
 HTTP.createServer(HTTPAPP).listen(HTTP_PORT);
+
+ // Spawn a peer object for the user, currently testing right now
+spawn('node',['./Mp3_Dump/seed_music.js']);
+
+// UDP Requests to Initialize Peer proceses
+PEER_LINK_SOCKET.on('message', function(msg, rinfo) {
+  UTIL.logAsync(`Server got: ${msg} from ${rinfo.address}:${rinfo.port}`);
+  // Check whether the message is an open peer message
+  if (msg == "open"){
+    UTIL.logAsync(`Creating a peer object for ${rinfo.address}:${rinfo.port}`);
+    LINK_MIDDLEWARE.createPeer().then((port) => {
+      // .send(Uint8Array, Offset, Byte Count, port, address
+      PEER_LINK_SOCKET.send(port.toString(), rinfo.port, rinfo.address,(err) => {
+        if(err) {
+          UTIL.logAsync("Error sending a request to the client");
+        }
+      });
+  
+    }).catch((err) => {
+      UTIL.logAsync(`Error initializing peer object.\nError Message: ${err.message}`);
+    });
+  }
+});
+
+// Specifies that the server is listening on specified port
+PEER_LINK_SOCKET.on('listening', ()=>{
+  const address = PEER_LINK_SOCKET.address();
+  UTIL.logAsync(`Server listening ${address.address} : ${address.port}`);
+});
+
+PEER_LINK_SOCKET.bind(SPAWN_PEER_PORT);

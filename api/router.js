@@ -78,7 +78,6 @@ const routing = function routing(express_router){
 
   // Gets all of the songs for a specific playlist for a user
   router.route('/playlistpage').get(function(req, res) {
-    UTILITIES.logAsync("Test test Here");
     MUSIC_MIDDLEWARE.getPlaylist(req, res);
   });
 
@@ -106,11 +105,6 @@ const routing = function routing(express_router){
   router.route('/artist').get(function(req, res) {
     MUSIC_MIDDLEWARE.getArtist(req, res);
   });
-
-  // Starts a process and gives the GUID of the started process back to the user
-  router.route('/initialize-peer').get(function(req, res){
-    LINK_MIDDLEWARE.createPeer(req, res);
-  }); 
 
   router.route('/add-seed-torrent').put(function(req, res){
     P2P_MIDDLEWARE.downloadSeed(req, res);
