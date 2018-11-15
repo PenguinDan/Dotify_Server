@@ -141,8 +141,10 @@ PEER_LINK_SOCKET.on('message', function(msg, rinfo) {
   if (msg == "open"){
     UTIL.logAsync(`Creating a peer object for ${rinfo.address}:${rinfo.port}`);
     LINK_MIDDLEWARE.createPeer().then((port) => {
+      let bufferUtil = Buffer.allocUnsafe(8);
+      bufferUtil.writeInt32BE(port);
       // .send(Uint8Array, Offset, Byte Count, port, address
-      PEER_LINK_SOCKET.send(port.toString(), rinfo.port, rinfo.address,(err) => {
+      PEER_LINK_SOCKET.send(bufferUtil, 0, bufferUtil.byteLength, rinfo.port, rinfo.address,(err) => {
         if(err) {
           UTIL.logAsync("Error sending a request to the client");
         }

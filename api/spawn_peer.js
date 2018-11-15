@@ -9,6 +9,12 @@ const FS = BLUEBIRD.promisifyAll(require('fs'));
 var WebTorrent = require('webtorrent-hybrid')
 let CLIENT = new WebTorrent();
 
+// When the client has an error.
+CLIENT.on('error', function (err) {
+    UTIL.logAsync("Error in the client");
+    UTIL.logAsync(err);
+});
+
 // Setup UDP Socket
 const PEER_SOCKET = DGRAM.createSocket('udp4');
 
@@ -51,18 +57,55 @@ async function downloadSeed(GUID, client_add, client_port ){
     try{
         UTIL.logAsync("Downloading and seeding torrent");
         let torrentId = String(GUID);
+        // Checking if the torrent id is null.
         if(!torrentId){
-            UTIL.logAsync("Torrent id  requested was invalid.")
-            return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Torrent Id requested was invalid"});
+            UTIL.logAsync("Torrent id  requested was invalid.");
+            return;
         }
+        
+        // Downloading the torrent with hashInfo.
         var torrent = await CLIENT.add(torrentId);        
+        
+        // Checking if the torrent gave any results.
+        if(!torrent){
+            UTIL.logAsync("The torrent was not valid");
+            return;
+        }
+
+        // When the torrent has an error, this method will be called.
+        torrent.on('error', function (err) {
+            UTIL.logAsync("Error in the Torrent");
+            UTIL.logAsync(err);
+        });
+
+        
         UTIL.logAsync("Client: " +  CLIENT.nodeId +  " Added torrent: " + torrent.infoHash);
+        // WHen the torrent is finished downloading, it will automatically being to seed and run this function.
         torrent.on('done', async function(){
             UTIL.logAsync('Torrent download finished.');
-            PEER_SOCKET.send(this.fileTorrent, 0, this.fileTorrent.length, client_port, client_add, function(err, bytes) {
-                if (err) throw err;
-                UTIL.logAsync('UDP message sent to ' + client_add +':'+ client_port);
+            // Getting the file from the torrent.
+            var file = await this.files.find(async function (file) {
+                return file.name.endsWith('.mp3');
             });
+            UTIL.logAsync("File name: " + file.name);
+            // Getting the buffer and sending it.
+            file.getBuffer(async function (err, buffer) {
+                if (err) throw err;
+                UTIL.logAsync('Sending file of length ' + buffer.length + " to "+ client_add +':'+ client_port);
+                //
+                let bufferUtil = Buffer.allocUnsafe(8);
+                bufferUtil.writeInt32BE(buffer.length);
+                //PEER_SOCKET.send(bufferUtil,0,bufferUtil.byteLength, client_port, client_add, function(err, bytes) {
+                //    if (err) throw err;
+                //    UTIL.logAsync('Sent log');
+                    //Sending the music stream(file buffer).
+                    
+                //});
+                PEER_SOCKET.send(buffer, 0, buffer.length, client_port, client_add);
+                UTIL.logAsync('Sent Stream');
+                
+              });
+
         }); 
     }catch(err){
             UTIL.logAsync(err.message);
