@@ -8,7 +8,7 @@ const BLUEBIRD = require('bluebird');
 const FS = BLUEBIRD.promisifyAll(require('fs'));
 var WebTorrent = require('webtorrent-hybrid')
 let CLIENT = new WebTorrent();
-
+const math = require('mathjs')
 // When the client has an error.
 CLIENT.on('error', function (err) {
     UTIL.logAsync("Error in the client");
@@ -20,12 +20,21 @@ const PEER_SOCKET = DGRAM.createSocket('udp4');
 
 let port = 0;
 
+// The song the client is currently listening to.
+let CURRENTBUFFER;
+
+// Length of the iterations being sent.
+var len = 10000;
+
+var iters = 1;
+
 // Test to see that the socket is listening on the specified port
 PEER_SOCKET.on('listening', () => {
     UTIL.logAsync(`Listening on port: ${port}`);
 });
 
 PEER_SOCKET.on('message', (msg, rinfo) => {
+    UTIL.logAsync("Type of: " + Number(msg))
     // if the message is to close, Exit the process
     if (msg == 'close'){
         PEER_SOCKET.close(async () => {
@@ -44,7 +53,25 @@ PEER_SOCKET.on('message', (msg, rinfo) => {
                 // End the process
                 process.exit(0);
             });
-        })
+        });
+    }
+    else if(Number(msg) < 10000000){
+        var position = Number(msg);
+        var curLen = len;
+        UTIL.logAsync("Buffer length " + CURRENTBUFFER.length);
+        // Looping iters times to send that many packets of size len 
+        if(CURRENTBUFFER.length - position < len){
+            curLen = math.max(CURRENTBUFFER.length - position,0);
+            UTIL.logAsync("Changing size of len." + curLen);
+        }else{
+            UTIL.logAsync("Len remains the same size." + curLen);
+        }
+        for(var i = 0; i < iters; i++){
+            UTIL.logAsync("Sending at position: " + position);
+            //Socket sending a buffeer starting at position, going len into position to port and address.
+            PEER_SOCKET.send(CURRENTBUFFER, position, curLen, rinfo.port, rinfo.address);
+            position += len;
+        }
     } else {
         UTIL.logAsync("GUID from client: " + msg + " from " + rinfo.address + ":" + rinfo.port);
         downloadSeed(msg, rinfo.address, rinfo.port);
@@ -92,17 +119,27 @@ async function downloadSeed(GUID, client_add, client_port ){
             file.getBuffer(async function (err, buffer) {
                 if (err) throw err;
                 UTIL.logAsync('Sending file of length ' + buffer.length + " to "+ client_add +':'+ client_port);
-                //
+                
                 let bufferUtil = Buffer.allocUnsafe(8);
                 bufferUtil.writeInt32BE(buffer.length);
-                //PEER_SOCKET.send(bufferUtil,0,bufferUtil.byteLength, client_port, client_add, function(err, bytes) {
-                //    if (err) throw err;
-                //    UTIL.logAsync('Sent log');
+                PEER_SOCKET.send(bufferUtil,0,bufferUtil.byteLength, client_port, client_add, function(err, bytes) {
+                    if (err) throw err;
+                    UTIL.logAsync('Sent length log');
                     //Sending the music stream(file buffer).
-                    
-                //});
-                PEER_SOCKET.send(buffer, 0, buffer.length, client_port, client_add);
-                UTIL.logAsync('Sent Stream');
+                    // Setting global buffer;
+                    CURRENTBUFFER = buffer
+                    //let pos = 0;
+                    // Looping iters times to send that many packets of size len
+                    //for(var i = 0; i < iters; i++){
+                     //   UTIL.logAsync("Sending at position: " + pos);
+                        //Socket sending a buffeer starting at position, going len into position to port and address.
+                    //    PEER_SOCKET.send(buffer, pos, len, client_port, client_add);
+                     //   pos += len;
+                   // }
+                   // UTIL.logAsync('Sent Stream');
+
+                });
+                
                 
               });
 
