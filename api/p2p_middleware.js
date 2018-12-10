@@ -2,7 +2,7 @@
 //Importing modules
 const FS = require('fs');
 const UTIL = require('./helper/utilities');
-var WebTorrent = require('webtorrent-hybrid')
+var WebTorrent = require('webtorrent-hybrid');
 
 let CLIENT = new WebTorrent();
 const DGRAM = require('dgram');
@@ -35,13 +35,22 @@ async function downloadSeed(req, res){
     	if(!torrentId){
 		UTIL.logAsync("Torrent id  requested was invalid.")
        		 return res.status(CONSTANTS.INTERNAL_SERVER_ERROR).json({message: "Torrent Id  requested was invalid"});
-    	}
+		}
+
+		//let store_chunk = function(){
+
+		// }
+		// opts = {
+		// 	"store": store_chunk
+		// }
     	let torrent = await CLIENT.add(torrentId);
     	UTIL.logAsync("Client: " +  CLIENT.nodeId +  " Added torrent: " + torrent.infoHash)
 
+		// Adding and seeding the torrent is finished.
     	torrent.on('done', async function(){
        		 UTIL.logAsync('Torrent download finished.')
-
+			
+			// Sending the torrent to the client that requested to access it.
         	SERVER.send(torrent.torrentFile, 0, message.length, PORT, HOST, function(err, bytes) {
             	if (err) throw err;
            	 console.log('UDP message sent to ' + HOST +':'+ PORT);
