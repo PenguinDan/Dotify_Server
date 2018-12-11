@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/PenguinDan/Dotify_Server#readme",
   "dependencies": {
+    "@grpc/proto-loader": "^0.3.0",
     "abstract-chunk-store": "^1.4.0",
     "bcrypt": "^3.0.1",
     "bittorrent-dht": "^9.0.0",
@@ -33,6 +34,7 @@
     "dgram": "^1.0.1",
     "express": "^4.16.3",
     "fluent-ffmpeg": "^2.1.2",
+    "grpc": "^1.16.1",
     "hashmap": "^2.3.0",
     "helmet": "^3.13.0",
     "jpeg-js": "^0.3.4",

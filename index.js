@@ -3,6 +3,7 @@
 // Modules
 const UTIL = require('./api/helper/utilities');
 const CONSTANTS = require('./api/helper/constants');
+const android_middleware = require('./api/AndroidPb_middleware');
 const HTTP = require('http');
 const HTTPS = require('https');
 const EXPRESS = require('express');
@@ -18,6 +19,9 @@ const SEED_MUSIC = require('./Mp3_Dump/seed_music.js');
 const { spawn } = require('child_process');
 const DGRAM = require('dgram');
 const LINK_MIDDLEWARE = require('./api/link_middleware');
+const grpc = require('grpc');
+const protoLoader = require('@grpc/proto-loader');
+
 
 // Setup Express routes
 const HTTPAPP = EXPRESS();
@@ -31,6 +35,18 @@ const SECURE_PORT = 443;
 const SPAWN_PEER_PORT = 40000;
 const CERT_LOC = '/etc/letsencrypt/live/www.dotify.online/';
 const ROUTER = ROUTES(EXPRESS.Router());
+const ANDROID_PROTO_PATH = __dirname + '/api/Proto/AndroidPb.proto';
+const packageDefinition = protoLoader.loadSync(
+  ANDROID_PROTO_PATH,
+  {
+    keepCase : true,
+    longs: String,
+    enums : String,
+    defaults: true,
+    oneofs : true
+  }
+);
+const androidProto = grpc.loadPackageDefinition(packageDefinition).AndroidPb;
 
 // Incrase server listener count
 require('events').EventEmitter.defaultMaxListeners = 30;
@@ -163,3 +179,13 @@ PEER_LINK_SOCKET.on('listening', ()=>{
 });
 
 PEER_LINK_SOCKET.bind(SPAWN_PEER_PORT);
+
+// GRPC Server
+const grpcAndroidServer = new grpc.Server();
+grpcAndroidServer.addService(AndroidPb.Sort.service, {
+  sort : android_middleware.sort
+});
+grpcAndroidServer.bind('http://www.dotify.online:50000', grpc.ServerCredentials.createInsecure());
+grpcAndroidServer.start();
+
+// GRPC for node communication
