@@ -9,6 +9,8 @@ option java_package = "com.example.thai.pb";
 // The outermost class name, hence the file name
 option java_outer_classname = "AndroidProto";
 
+package AndroidPb;
+
 // The Sort Definition
 service Sort {
     // Sends a Request to the server that we have to sort

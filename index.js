@@ -3,7 +3,6 @@
 // Modules
 const UTIL = require('./api/helper/utilities');
 const CONSTANTS = require('./api/helper/constants');
-const android_middleware = require('./api/AndroidPb_middleware');
 const HTTP = require('http');
 const HTTPS = require('https');
 const EXPRESS = require('express');
@@ -33,10 +32,11 @@ const ONE_YEAR = 31536000000;
 const HTTP_PORT = 80;
 const SECURE_PORT = 443;
 const SPAWN_PEER_PORT = 40000;
+const SERVER_GRPC_PORT = 50002;
 const CERT_LOC = '/etc/letsencrypt/live/www.dotify.online/';
 const ROUTER = ROUTES(EXPRESS.Router());
 const ANDROID_PROTO_PATH = __dirname + '/api/Proto/AndroidPb.proto';
-const packageDefinition = protoLoader.loadSync(
+const androidPackageDefinition = protoLoader.loadSync(
   ANDROID_PROTO_PATH,
   {
     keepCase : true,
@@ -46,7 +46,19 @@ const packageDefinition = protoLoader.loadSync(
     oneofs : true
   }
 );
-const androidProto = grpc.loadPackageDefinition(packageDefinition).AndroidPb;
+const androidProto = grpc.loadPackageDefinition(androidPackageDefinition).AndroidPb;
+const NODE_PROTO_PATH = __dirname + '/api/Proto/NodePb.proto';
+const nodePackageDefinition = protoLoader.loadSync(
+    NODE_PROTO_PATH,
+    {
+        keepCase : true,
+        longs : String,
+        enums : String,
+        defaults : true,
+        oneofs : true
+    }
+);
+const nodeProto = grpc.loadPackageDefinition(nodePackageDefinition).NodePb;
 
 // Incrase server listener count
 require('events').EventEmitter.defaultMaxListeners = 30;
@@ -181,11 +193,36 @@ PEER_LINK_SOCKET.on('listening', ()=>{
 PEER_LINK_SOCKET.bind(SPAWN_PEER_PORT);
 
 // GRPC Server
+function sort(call, callback) {
+  // Do something
+  callback(null, {message: 'Hello'});
+}
+
 const grpcAndroidServer = new grpc.Server();
-grpcAndroidServer.addService(AndroidPb.Sort.service, {
-  sort : android_middleware.sort
+grpcAndroidServer.addService(androidProto.Sort.service, {
+  sort : sort
 });
-grpcAndroidServer.bind('http://www.dotify.online:50000', grpc.ServerCredentials.createInsecure());
+grpcAndroidServer.bind('0.0.0.0:50001', grpc.ServerCredentials.createInsecure());
 grpcAndroidServer.start();
 
 // GRPC for node communication
+// Create a list that the server keeps track of for all of the current nodes that are alive
+const aliveNodes = [];
+
+// Nodes telling the server that they are alive
+function creation(call, callback) {
+    aliveNodes.push(call.request.portVal);
+}
+
+// Nodes telling the server that they have finished reducing
+function reduceFinished(call, callback) {
+    
+}
+
+const grpcNodeServer = new grpc.Server();
+grpcNodeServer.addService(nodeProto.ServerRequests.service, {
+    creation : creation,
+    reduceFinished : reduceFinished
+});
+grpcNodeServer.bind(`0.0.0.0:${SERVER_GRPC_PORT}`, grpc.ServerCredentials.createInsecure());
+grpcNodeServer.start();

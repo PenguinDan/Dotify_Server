@@ -1,6 +1,6 @@
-var WebTorrent = require('webtorrent-hybrid')
-var FS = require("fs")
 
+var WebTorrent = require('webtorrent-hybrid');
+var FS = require("fs");
 let CLIENT = new WebTorrent();
 
 
@@ -19,14 +19,6 @@ let printList = []
 
 async function seedSongs(){
    
-    /*let data = await FS.readFile('Lucky You_Eminem_Kamikaze.mp3', function(err,data){
-        if (err) throw err;
-        return data
-    })
-
-    let torrent = await CLIENT.seed(data)
-    console.log("Client: ", CLIENT.nodeId, " Added seeded torrent: ", torrent.infoHash, " Data: ", data.length);
-    */
    songList.forEach(async function(value){
         await FS.readFile( "Mp3_Dump/" + value, async function(err,data){
             if (err) throw err;
@@ -78,26 +70,8 @@ async function simpleSeed(data){
     
 }
 async function main(){
-    //await addTorrent('e7cf9b81e8e9549eb696006ac984cba13617c6fa')
-    //simpleSeed(torrent.torrentFile)
     await seedSongs()
     
 }
-main()
 
-/*Working code But the files are not being read the samde each time.
-songList.forEach(function(value){
-        FS.readFile(value, async function(err,data){
-            if (err) throw err;
-            let torrent = await CLIENT.seed(data)
-            torrent.on('done', function () {
-                console.log('torrent download finished')
-                console.log("Client: ", CLIENT.nodeId)
-                console.log("Added seeded torrent: ", torrent.infoHash, " Value: ", value, " Data: ", data.length);
-      
-            })
-            torrent.on('error', function(error){
-                console.log("Error in the torrent")
-            })
-              })
-    }) */
+main()

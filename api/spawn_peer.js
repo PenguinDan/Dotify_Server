@@ -8,12 +8,29 @@ const BLUEBIRD = require('bluebird');
 const FS = BLUEBIRD.promisifyAll(require('fs'));
 var WebTorrent = require('webtorrent-hybrid')
 let CLIENT = new WebTorrent();
-const math = require('mathjs')
+const math = require('mathjs');
+const grpc = require('grpc');
+const protoLoader = require('@grpc/proto-loader');
+const SERVER_GRPC_PORT = 50002;
 // When the client has an error.
 CLIENT.on('error', function (err) {
     UTIL.logAsync("Error in the client");
     UTIL.logAsync(err);
 });
+
+// GRPC
+const NODE_PROTO_PATH = __dirname + '/Proto/NodePb.proto';
+const nodePackageDefinition = protoLoader.loadSync(
+    NODE_PROTO_PATH,
+    {
+        keepCase : true,
+        longs : String,
+        enums : String,
+        defaults : true,
+        oneofs : true
+    }
+);
+const nodeProto = grpc.loadPackageDefinition(nodePackageDefinition).NodePb;
 
 // Setup UDP Socket
 const PEER_SOCKET = DGRAM.createSocket('udp4');
@@ -155,3 +172,28 @@ process.on('message', function(portVal){
     port = portVal;
     PEER_SOCKET.bind(port);
 });
+
+
+
+
+// -------------- GRPC ------------------
+function map(call, callback) {
+
+}
+
+function reduce(call, callback) {
+
+}
+
+function emitCompleted(call, callback) {
+
+}
+
+const grpcNodeServer = new grpc.Server();
+grpcNodeServer.addService(nodeProto.NodeRequests.service, {
+    map : map,
+    reduce : reduce, 
+    emitCompleted : emitCompleted
+});
+grpcNodeServer.bind(`0.0.0.0:${SERVER_GRPC_PORT}`, grpc.ServerCredentials.createInsecure());
+grpcNodeServer.start();

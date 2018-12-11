@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package NodePb;
+
+// The Genesis Definition from Nodes -> Server
+service ServerRequests {
+    // Sends a Request to the server that the node has come alive
+    rpc creation (GenesisRequest) returns (EmptyResponse) {};
+    // Sends a Request to the server that the node has finished reducing the keys
+    rpc reduceFinished (ReducedFinishedRequest) returns (EmptyResponse) {};
+
+}
+
+// The Sort Service Definition from Server -> Nodes
+service NodeRequests {
+    // Sends a Request to the nodes that we want to sort and starts the Map phase
+    rpc map (MapRequest) returns (EmptyResponse) {};
+    // Nodes send a Request to the nodes that we want to sort and starts the Reduce phrase
+    rpc reduce (ReduceRequest) returns (EmptyResponse) {};
+    // Nodes emitting to every other node that we have finished sorting
+    rpc emitCompleted (EmptyRequest) returns (EmptyResponse) {};
+}
+
+// The request message saying that a particular node has come alive
+message GenesisRequest{
+    int32 portVal = 1;
+}
+
+// The request message starting the Map phase
+message MapRequest {
+    map<string, string> keyVal = 1;
+    int32 alphabetRangeStart = 2;
+    int32 alphabetRangeStop = 3;
+    map<string, int32> alphabetRangePortMap = 4;
+}
+
+// The reuqest message starting the Reduce phase
+message ReduceRequest {
+    map<string, string> keyVal = 1;
+}
+
+message EmptyRequest {
+
+}
+
+message EmptyResponse {
+
+}
+
+// The request message saying the node has finished reducing
+message ReducedFinishedRequest {
+    map<string, string> keyVal = 1;
+    int32 alphabetRangeStart = 2;
+    int32 alphabetRangeStop = 3;
+}
