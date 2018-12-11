@@ -32,6 +32,10 @@ const nodePackageDefinition = protoLoader.loadSync(
 );
 const nodeProto = grpc.loadPackageDefinition(nodePackageDefinition).NodePb;
 
+// REDUCE Key Value list map.
+let keyValList = new Map();
+
+
 // Setup UDP Socket
 const PEER_SOCKET = DGRAM.createSocket('udp4');
 
@@ -171,29 +175,89 @@ process.on('message', function(portVal){
     // Bind the socket
     port = portVal;
     PEER_SOCKET.bind(port);
+    instantiateSelfConnection(port);
+    instantiateGrpcConnection(port);
 });
 
 
+// -------------- GRPC from Server or Node ------------------
+let counter = 0;
 
-
-// -------------- GRPC ------------------
 function map(call, callback) {
+    UTIL.logAsync(call.request.keyVal);
 
+    // Loading the .proto from the Node package definition.
+    const grpcToNode = grpc.loadPackageDefinition(nodePackageDefinition).NodePb;
+
+    // The map from alphabets to the index values sorted by the keys.
+    let sortedMap = orderKeys(call.request.keyVal);
+
+    // Map of alphabet ASCII ranges for each node, mapped to a port value. i.e <key(string): '108,125', value(int32): 10233>.  
+    let portMap = call.request.alphabetRangePortMap;
+
+    // Iterating through the list to sort and then send call other nodes to sort their values.
+    Object.entries(portMap).forEach(entries =>{
+        // Comparing the starting letter from the key of the entry in portMap to this ports start letter (since this port is included in the map).
+        if (call.request.alphabetRangeStart != entries[0].split(',')){
+            const toNode = new grpcToNode.NodeRequests(`0.0.0.0:${port}`, grpc.credentials.createInsecure());
+            toNode.reduce({keyVal: sortedMap});
+            
+            toNode.emitCompleted();
+        }
+    });
 }
 
-function reduce(call, callback) {
-
+function reduce(keyValMap, callback) {
+    Object.entries(keyValMap).forEach(entries =>{
+        keyValList[entries[0]] = entries[1];
+    });
 }
 
 function emitCompleted(call, callback) {
+    counter++;
+    if(counter >= 4){
+        //Already sorted because the reduce step.
+    }
 
 }
 
-const grpcNodeServer = new grpc.Server();
-grpcNodeServer.addService(nodeProto.NodeRequests.service, {
-    map : map,
-    reduce : reduce, 
-    emitCompleted : emitCompleted
-});
-grpcNodeServer.bind(`0.0.0.0:${SERVER_GRPC_PORT}`, grpc.ServerCredentials.createInsecure());
-grpcNodeServer.start();
+// ------------ Sorts a map returning sorted map key and values. ------------
+function orderKeys(obj, expected) {
+
+    var keys = Object.keys(obj).sort(function keyOrder(k1, k2) {
+        if (k1 < k2) return -1;
+        else if (k1 > k2) return +1;
+        else return 0;
+    });
+  
+    var i, after = {};
+    for (i = 0; i < keys.length; i++) {
+      after[keys[i]] = obj[keys[i]];
+      delete obj[keys[i]];
+    }
+    for (i = 0; i < keys.length; i++) {
+      obj[keys[i]] = after[keys[i]];
+    }
+    return obj;
+  }
+  
+
+function instantiateSelfConnection(port) {
+    const grpcNodeServer = new grpc.Server();
+    grpcNodeServer.addService(nodeProto.NodeRequests.service, {
+        map : map,
+        reduce : reduce, 
+        emitCompleted : emitCompleted
+    });
+    grpcNodeServer.bind(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure());
+    grpcNodeServer.start(); 
+}
+
+// --------------- GRPC to Server ---------------------
+function instantiateGrpcConnection(port) {
+    const grpcToServer = grpc.loadPackageDefinition(nodePackageDefinition).NodePb;
+    const toServer = new grpcToServer.ServerRequests(`0.0.0.0:${SERVER_GRPC_PORT}`, grpc.credentials.createInsecure());
+    toServer.creation({portVal : port}, function(err, response){
+        UTIL.logAsync("Successfully sent to server");
+    });
+}

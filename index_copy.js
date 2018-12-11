@@ -11,7 +11,7 @@ const BODY_PARSER = require('body-parser');
 const BLUEBIRD = require('bluebird');
 const FS = BLUEBIRD.promisifyAll(require('fs'));
 // const HELMET = require('helmet');
-const HASHMAP = require('hashmap');
+// const HASHMAP = require('hashmap');
 // const USER_MIDDLEWARE = require('./api/user_middleware');
 // const MUSIC_MIDDLEWARE = require('./api/music_middleware');
 // const SEED_MUSIC = require('./Mp3_Dump/seed_music.js');
@@ -180,68 +180,25 @@ const nodeProto = grpc.loadPackageDefinition(nodePackageDefinition).NodePb;
 
 // PEER_LINK_SOCKET.bind(SPAWN_PEER_PORT);
 
+// GRPC Server
+function sort(call , callback) {
+//    let songFile = await FS.readFileAsync(CONSTANTS.SONG_DATABASE_FILE);
+//    songFile = JSON.parse(songFile);
+  // let albumFile = await FS.readFileAsync(CONSTANTS.SONG_DATABASE_FILE);
+  // albumFile = JSON.parse(albumFile);
+  // let artistFile = await FS.readFileAsync(CONSTANTS.ARTIST_DATABASE_FILE);
+  // artistFile = JSON.parse(artistFile);
+  // let guidToInfoFile = await FS.readFileAsync(CONSTANTS.GUID_MAPPING_FILE);
+  // guidToInfoFile = JSON.parse(guidToInfoFile);
+//   UTIL.logAsync(songFile);
+  // Do something
+  callback(null);
+}
 
 // GRPC for node communication
 // Create a list that the server keeps track of for all of the current nodes that are alive
 const aliveNodePorts = [];
 const grpcConnectionList = [];
-
-// GRPC Server
-function sort(call, callbacks) {
-    
-    let songFile = FS.readFileSync(CONSTANTS.SONG_DATABASE_FILE);
-    let songKeysValue = createKeyValuePair(JSON.parse(songFile));
-    
-    // let albumFile = await FS.readFileAsync(CONSTANTS.SONG_DATABASE_FILE);
-    // let albumKeysValue = createKeyValuePair(JSON.parse(albumFile));
-    
-    // let artistFile = await FS.readFileAsync(CONSTANTS.ARTIST_DATABASE_FILE);
-    // let artistKeysValue = createKeyValuePair(JSON.parse(artistFile));
-
-    // let guidToInfoFile = await FS.readFileAsync(CONSTANTS.GUID_MAPPING_FILE);
-    // let guidToInfoFileKeysValue = createKeyValuePair(JSON.parse(guidToInfoFile));
-
-    for(let i = 0; i < grpcConnectionList.length; i++) {
-        let currNode = grpcConnectionList[i];
-        currNode.map({ 
-            keyVal : songKeysValue[i],
-            alphabetRangeStart : ,
-            alphabetRangeStop : ,
-        });
-    }
-
-  // Do something
-  callback(null);
-}
-
-module.exports = {sort};
-
-//Create a hash map for all of the database
-function createKeyValuePair(currFile){
-    let mapList = [];
-    let keys = Object.keys(currFile);
-    let memberCount = 3;
-    let maxSetCount = parseInt(7 / memberCount);
-    let currCounter = 0;
-
-    for (let i = 0; i < memberCount; i++) {
-        let currMap = new HASHMAP();
-
-        for (let j = 0; j < maxSetCount; j++) {
-            let index = currCounter + j;
-            currCounter += 1;
-
-            if(index >= 7) {
-                break;
-            }
-            let stringVal = JSON.stringify(currFile[keys[index]]);
-            currMap.set(keys[index], stringVal);
-        }
-        mapList.push(currMap);
-    }
-
-    return mapList;
-}
 
 // Nodes telling the server that they are alive
 function creation(call, callback) {
@@ -259,8 +216,6 @@ function creation(call, callback) {
 
 // Nodes telling the server that they have finished reducing
 function reduceFinished(call, callback) {
-    UTIL.logAsync("Finished");
-    console.log(call.keyVal);
     callback(null);
 }
 
