@@ -29,7 +29,7 @@ message GenesisRequest{
 
 // The request message starting the Map phase
 message MapRequest {
-    map<any, any> keyVal = 1;
+    map<string, string> keyVal = 1;
     int32 alphabetRangeStart = 2;
     int32 alphabetRangeStop = 3;
     map<string, int32> alphabetRangePortMap = 4;
@@ -37,7 +37,7 @@ message MapRequest {
 
 // The reuqest message starting the Reduce phase
 message ReduceRequest {
-    map<any, any> keyVal = 1;
+    map<string, string> keyVal = 1;
 }
 
 message EmptyRequest {
@@ -50,7 +50,7 @@ message EmptyResponse {
 
 // The request message saying the node has finished reducing
 message ReducedFinishedRequest {
-    map<any, any> keyVal = 1;
+    map<string, string> keyVal = 1;
     int32 alphabetRangeStart = 2;
     int32 alphabetRangeStop = 3;
 }

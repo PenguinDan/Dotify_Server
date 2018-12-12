@@ -39,7 +39,8 @@ let keyValList = new Map();
 // Setup UDP Socket
 const PEER_SOCKET = DGRAM.createSocket('udp4');
 
-let port = 0;
+let udpPort = 0;
+let tcpPort = 0;
 
 // The song the client is currently listening to.
 let CURRENTBUFFER;
@@ -51,7 +52,7 @@ var iters = 1;
 
 // Test to see that the socket is listening on the specified port
 PEER_SOCKET.on('listening', () => {
-    UTIL.logAsync(`Listening on port: ${port}`);
+    UTIL.logAsync(`Listening on udpPort: ${udpPort}`);
 });
 
 PEER_SOCKET.on('message', (msg, rinfo) => {
@@ -64,12 +65,12 @@ PEER_SOCKET.on('message', (msg, rinfo) => {
             // Parse the retrieved json file
             let udpJson = JSON.parse(udpFile);
             // Remove the port value from the used ports
-            udpJson.usedPorts.splice(udpJson.usedPorts.indexOf(port), 1);
+            udpJson.usedPorts.splice(udpJson.usedPorts.indexOf(udpPort), 1);
             // Add to the list of safe ports since this port will now be free
-            udpJson.safePorts.unshift(port);
+            udpJson.safePorts.unshift(udpPort);
             // Save the udp json object to disk
             FS.writeFile(CONSTANTS.UDP_CONFIG_FILEPATH, JSON.stringify(udpJson), (err) => {
-                UTIL.logAsync(`Port ${port} closed. Child killed.`);
+                UTIL.logAsync(`Port ${udpPort} closed. Child killed.`);
                 UTIL.logAsync("Saved updated udp json file");
                 // End the process
                 process.exit(0);
@@ -171,58 +172,120 @@ async function downloadSeed(GUID, client_add, client_port ){
 }
 
 // Received a message from the parent
-process.on('message', function(portVal){
+process.on('message', function(portVals){
     // Bind the socket
-    port = portVal;
-    PEER_SOCKET.bind(port);
-    instantiateSelfConnection(port);
-    instantiateGrpcConnection(port);
+    udpPort = portVals.udpPort;
+    tcpPort = portVals.tcpPort;
+    PEER_SOCKET.bind(udpPort);
+    instantiateSelfConnection(tcpPort);
+    instantiateGrpcConnection(tcpPort);
 });
 
 
 // -------------- GRPC from Server or Node ------------------
 let counter = 0;
+let nodeCount = 0;
+let currKeyValList = {};
+let nodeRangeStart = 0;
+let nodeRangeStop = 0;
 
 function map(call, callback) {
-    UTIL.logAsync(call.request.keyVal);
+    UTIL.logAsync(`Current node at ${tcpPort} received map call`);
+    // Initialize some values for our current node for the current sort sequence
+    nodeRangeStop = call.request.alphabetRangeStop;
+    nodeRangeStart = call.request.alphabetRangeStart;
+
+    UTIL.logAsync(`Node range values : ${nodeRangeStart} , ${nodeRangeStop}`);
 
     // Loading the .proto from the Node package definition.
     const grpcToNode = grpc.loadPackageDefinition(nodePackageDefinition).NodePb;
+    // Let the node know the number of total nodes everywhere
+    nodeCount = Object.keys(call.request.alphabetRangePortMap).length;
 
-    // The map from alphabets to the index values sorted by the keys.
-    let sortedMap = orderKeys(call.request.keyVal);
+    UTIL.logAsync(`Node Count Value ${nodeCount}`);
 
-    // Map of alphabet ASCII ranges for each node, mapped to a port value. i.e <key(string): '108,125', value(int32): 10233>.  
-    let portMap = call.request.alphabetRangePortMap;
+    // Special case when there is only one node
+    if(nodeCount == 1) {
+        // The map from alphabets to the index values sorted by the keys.
+        let sortedMap = orderKeys(call.request.keyVal);
+        UTIL.logAsync(`Current node at ${tcpPort} finished sorting`);
 
-    // Iterating through the list to sort and then send call other nodes to sort their values.
-    Object.entries(portMap).forEach(entries =>{
-        // Comparing the starting letter from the key of the entry in portMap to this ports start letter (since this port is included in the map).
-        if (call.request.alphabetRangeStart != entries[0].split(',')){
-            const toNode = new grpcToNode.NodeRequests(`0.0.0.0:${port}`, grpc.credentials.createInsecure());
-            toNode.reduce({keyVal: sortedMap});
-            
-            toNode.emitCompleted();
+        UTIL.logAsync("Sort finished, sending reduceFinished request to server");
+        const grpcToServer = grpc.loadPackageDefinition(nodePackageDefinition).NodePb;
+        const toServer = new grpcToServer.ServerRequests(`0.0.0.0:${SERVER_GRPC_PORT}`, grpc.credentials.createInsecure());
+        toServer.reduceFinished({keyVal : sortedMap}, function(err, response){
+            if (err) {
+                UTIL.logAsync(err);
+            } else {
+                UTIL.logAsync(`Node at TCP Port ${tcpPort} successfully sent reduceFinished to server`);
+            }
+        });
+    } else {
+        let portMap = call.request.alphabetRangePortMap;
+
+        // Map the keyVals into their respective lists
+        let mapList = mapKeys(call.request.keyVal);
+
+        console.log(portMap);
+        console.log('-------- Port Map ------------');
+        // Iterating through the list to sort and then send call other nodes to sort their values.
+        for(let [key, port] of Object.entries(portMap)) {
+            // Retrieve the index for which node this is being sent to
+            let index = Math.floor(parseInt(key.split(',')[0]) - 65) / (Math.ceil(26/ nodeCount)  + 1);
+
+            // If the current value is the tcpPort currently attached to this node, then just save it in our node
+            if(port == tcpPort) {
+                currKeyValList = Object.assign({}, currKeyValList, mapList[index]);
+            } else {
+                let toNode = new grpcToNode.NodeRequests(`0.0.0.0:${port}`, grpc.credentials.createInsecure());
+                toNode.reduce({keyVal: mapList[index]} , function(err, response) {
+                    if(err) {
+                        UTIL.logAsync(err);
+                    } 
+                });
+            }
+
+        }
+    }
+    callback(null);
+}
+
+// Received the reduce request from another node, simply add it to our list
+function reduce(call, callback) {
+    counter++;
+    currKeyValList = Object.assign({}, currKeyValList, call.request.keyVal);
+    if(counter >= nodeCount - 1) {
+        emitCompleted();
+    }
+
+    callback(null);
+}
+
+function emitCompleted() {
+    // Sort the keyValList
+    let sortedKeyVal = orderKeys(currKeyValList);
+
+    //Already sorted because the reduce step, send it to the server
+    UTIL.logAsync(`Sort from ${tcpPort} finished, sending reduceFinished request to server from emitCompleted`);
+    UTIL.logAsync(`Node range values : ${nodeRangeStart} , ${nodeRangeStop}`);
+
+    const grpcToServer = grpc.loadPackageDefinition(nodePackageDefinition).NodePb;
+    const toServer = new grpcToServer.ServerRequests(`0.0.0.0:${SERVER_GRPC_PORT}`, grpc.credentials.createInsecure());
+    toServer.reduceFinished({
+        keyVal : sortedKeyVal,
+        alphabetRangeStart : nodeRangeStart,
+        alphabetRangeStop : nodeRangeStop
+    }, function(err, response){
+        if (err) {
+            UTIL.logAsync(err);
+        } else {
+            UTIL.logAsync(`Node at TCP Port ${tcpPort} successfully sent reduceFinished to server`);
         }
     });
 }
 
-function reduce(keyValMap, callback) {
-    Object.entries(keyValMap).forEach(entries =>{
-        keyValList[entries[0]] = entries[1];
-    });
-}
-
-function emitCompleted(call, callback) {
-    counter++;
-    if(counter >= 4){
-        //Already sorted because the reduce step.
-    }
-
-}
-
 // ------------ Sorts a map returning sorted map key and values. ------------
-function orderKeys(obj, expected) {
+function orderKeys(obj) {
 
     var keys = Object.keys(obj).sort(function keyOrder(k1, k2) {
         if (k1 < k2) return -1;
@@ -238,9 +301,33 @@ function orderKeys(obj, expected) {
     for (i = 0; i < keys.length; i++) {
       obj[keys[i]] = after[keys[i]];
     }
+
     return obj;
-  }
-  
+}
+
+// -------------- Places the Keys in their appropriate containers ----------------
+
+function mapKeys(keyVal) {
+    // Create the list mapping 
+    let listMap = new Array(nodeCount);
+    let storeIndex = 0;
+
+    for(let [key, val] of Object.entries(keyVal)) {
+        let charVal = key[0].toUpperCase().charCodeAt(0);
+        storeIndex = Math.floor( (charVal - 65 ) / ((Math.ceil(26/ nodeCount)  + 1)));
+
+        if (!listMap[storeIndex]) {
+            listMap[storeIndex] = {}
+        }
+        let newDict = {}
+        newDict[key] = val;
+        listMap[storeIndex] = Object.assign({}, listMap[storeIndex], newDict);
+    }
+
+    return listMap;
+}
+
+//---------------------------------------------------------------------------------
 
 function instantiateSelfConnection(port) {
     const grpcNodeServer = new grpc.Server();
@@ -258,6 +345,10 @@ function instantiateGrpcConnection(port) {
     const grpcToServer = grpc.loadPackageDefinition(nodePackageDefinition).NodePb;
     const toServer = new grpcToServer.ServerRequests(`0.0.0.0:${SERVER_GRPC_PORT}`, grpc.credentials.createInsecure());
     toServer.creation({portVal : port}, function(err, response){
-        UTIL.logAsync("Successfully sent to server");
+        if (err) {
+            UTIL.logAsync(err);
+        } else {
+            UTIL.logAsync(`Node at TCP Port ${port} successfully sent to creation call to server`);
+        }
     });
 }
