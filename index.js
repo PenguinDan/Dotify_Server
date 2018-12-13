@@ -316,7 +316,14 @@ function reduceFinished(call, callback) {
 
       for(let i = 0; i < aliveNodePorts.length; i++) {
         if (sortedStringList[i]) {
-          printString += sortedStringList[i];
+          // ------------- If anything broke delete code between lines -----------
+          console.log(JSON.parse(sortedStringList[i]));
+          let sortedJSONList = JSON.parse(sortedStringList[i]);
+          Object.entries(sortedJSONList).forEach(element =>{
+              printString += element[0] +"\n" + element[1] +"\n";
+          });
+          // ---------------------------------------------------------------------
+          //printString += sortedStringList[i] + "\n";
         }
       }
 
